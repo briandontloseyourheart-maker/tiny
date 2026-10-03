@@ -1,0 +1,113 @@
+# Domain
+lo_x = 0.0
+hi_x = 10.0
+
+lo_y =  0.0
+hi_y =  1.0
+
+lo_z =  0.0
+hi_z =  1.0
+
+# Space discretization
+n_cell_x = 1280
+n_cell_y = 128
+n_cell_z = 16
+
+max_grid_size = 16
+
+# Boundary condition
+is_periodic    =  0    0    1
+
+# Lid-driven cavity
+# lo_Dirichlet_u =  1.0  1.0  0.0
+# lo_Neumann_u   =  0.0  0.0  0.0
+# lo_Function_u  =  0.0  0.0  0.0
+
+# hi_Dirichlet_u =  1.0  1.0  0.0
+# hi_Neumann_u   =  0.0  0.0  0.0
+# hi_Function_u  =  0.0  1.0  0.0
+
+# lo_Dirichlet_v =  1.0  1.0  0.0
+# lo_Neumann_v   =  0.0  0.0  0.0
+# lo_Function_v  =  0.0  0.0  0.0
+
+# hi_Dirichlet_v =  1.0  1.0  0.0
+# hi_Neumann_v   =  0.0  0.0  0.0
+# hi_Function_v  =  0.0  0.0  0.0
+
+# lo_Dirichlet_w =  1.0  1.0  0.0
+# lo_Neumann_w   =  0.0  0.0  0.0
+# lo_Function_w  =  0.0  0.0  0.0
+
+# hi_Dirichlet_w =  0.0  1.0  0.0
+# hi_Neumann_w   =  1.0  0.0  0.0
+# hi_Function_w  =  0.0  0.0  0.0
+
+# lo_Dirichlet_P =  0.0  0.0  0.0
+# lo_Neumann_P   =  1.0  1.0  0.0
+# lo_Function_P  =  0.0  0.0  0.0
+
+# hi_Dirichlet_P =  0.0  0.0  0.0
+# hi_Neumann_P   =  1.0  1.0  0.0
+# hi_Function_P  =  0.0  0.0  0.0
+
+# Channel flow
+lo_Dirichlet_u =  1.0  1.0  0.0
+lo_Neumann_u   =  0.0  0.0  0.0
+lo_Function_u  =  1.0  0.0  0.0
+
+hi_Dirichlet_u =  0.0  1.0  0.0
+hi_Neumann_u   =  1.0  0.0  0.0
+hi_Function_u  =  0.0  0.0  0.0
+
+lo_Dirichlet_v =  1.0  1.0  0.0
+lo_Neumann_v   =  0.0  0.0  0.0
+lo_Function_v  =  0.0  0.0  0.0
+
+hi_Dirichlet_v =  0.0  1.0  0.0
+hi_Neumann_v   =  1.0  0.0  0.0
+hi_Function_v  =  0.0  0.0  0.0
+
+lo_Dirichlet_w =  1.0  1.0  0.0
+lo_Neumann_w   =  0.0  0.0  0.0
+lo_Function_w  =  0.0  0.0  0.0
+
+hi_Dirichlet_w =  0.0  1.0  0.0
+hi_Neumann_w   =  1.0  0.0  0.0
+hi_Function_w  =  0.0  0.0  0.0
+
+lo_Dirichlet_P =  0.0  0.0  0.0
+lo_Neumann_P   =  1.0  1.0  0.0
+lo_Function_P  =  0.0  0.0  0.0
+
+hi_Dirichlet_P =  1.0  0.0  0.0
+hi_Neumann_P   =  0.0  1.0  0.0
+hi_Function_P  =  0.0  0.0  0.0
+
+# Time discretization
+Final_Time = 100.0
+Fixed_TimeStep = 0
+dt = 0.0
+CFL = 0.9
+
+# Material properties
+Re = 10.0
+
+# Pressure poisson
+tol_rel = 1.0e-10
+max_iter = 100
+max_fmg_iter = 0
+verbose = 0
+bottom_verbose = 0
+
+# Output control
+nsteps = 1000000000
+plot_int = 100
+plotForce_int = 100
+
+# Checkpoint control
+chk_int = 500
+restart = -1
+
+amrex.v = 1
+amrex.async_out = 0  # If we use more than 64 processes, async_out will require MPI_THREAD_MULTIPLE
