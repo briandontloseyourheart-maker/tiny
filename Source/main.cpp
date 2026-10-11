@@ -256,6 +256,8 @@ void main_main ()
     DistributionMapping dm;
 
     // we allocate two phi multifabs; one will store the old state, the other the new.
+// 新增：可压缩守恒变量
+    MultiFab U_old, U_new;
     MultiFab u_old, u_new;
 #if (AMREX_SPACEDIM > 1)
     MultiFab v_old, v_new;
@@ -280,6 +282,9 @@ void main_main ()
 
         // How Boxes are distrubuted among MPI processes
         dm.define(ba);
+        // 新增：四个守恒分量，两层 ghost cell
+        U_old.define(ba, dm, NCONS, 2);
+        U_new.define(ba, dm, NCONS, 2);
 
         u_old.define(ba, dm, 1, Nghost);
         u_new.define(ba, dm, 1, Nghost);

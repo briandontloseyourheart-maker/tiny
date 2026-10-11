@@ -2,8 +2,47 @@
 #define MY_KERNEL_H_
 
 #include <AMReX_FArrayBox.H>
+// 二维守恒变量的分量编号
+enum {
+    URHO  = 0,  // 密度 rho
+    UMX   = 1,  // x方向动量 rho*u
+    UMY   = 2,  // y方向动量 rho*v
+    UENE  = 3,  // 总能量密度 rho*E
+    NCONS = 4   // 共4个分量
+};
+// 二维：守恒变量转换为密度、速度、压力和比内能
+// 调用前必须保证 rho > 0，且总能量扣除动能后为正
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+void ConsToPrim(
+    amrex::Real const rho,//ρ
+    amrex::Real const mx,//ρu
+    amrex::Real const my,//ρv
+    amrex::Real const rhoE,//ρE
+    amrex::Real const gamma,//γ
+    amrex::Real& u,
+    amrex::Real& v,
+    amrex::Real& p,
+    amrex::Real& e)
+{
+    // 动量除以密度，得到速度
+    u = mx / rho;
+    v = my / rho;
 
+    // 单位体积的动能
+    amrex::Real kinetic =
+        0.5 * (mx * mx + my * my) / rho;
+
+    // 单位体积的内能
+    amrex::Real rhoe = rhoE - kinetic;
+
+    // 单位质量的内能
+    e = rhoe / rho;
+
+    // 理想气体压力
+    p = (gamma - 1.0) * rhoe;
+}
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
+
 void Solid_Fraction (amrex::Real& Alpha_Solid,
         AMREX_D_DECL(amrex::Real const& x,
                      amrex::Real const& y,
