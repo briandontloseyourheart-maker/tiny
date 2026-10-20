@@ -2,45 +2,62 @@
 #define MY_KERNEL_H_
 
 #include <AMReX_FArrayBox.H>
-// 二维守恒变量的分量编号
-enum {
-    URHO  = 0,  // 密度 rho
-    UMX   = 1,  // x方向动量 rho*u
-    UMY   = 2,  // y方向动量 rho*v
-    UENE  = 3,  // 总能量密度 rho*E
-    NCONS = 4   // 共4个分量
-};
+#include <AMReX_Array.H>
+#include "Variables_CompressibleEuler.H"
+#include "Component2Vector_CompressibleEuler.H"
+#include "Vector2Component_CompressibleEuler.H"
+#include "State2Conservative_CompressibleEuler.H"
+#include "Conservative2State_CompressibleEuler.H"
+#include "State2Primitive_CompressibleEuler.H"
+#include "Primitive2State_CompressibleEuler.H"
+#include "Conservative2Primitive_CompressibleEuler.H"
+#include "Primitive2Conservative_CompressibleEuler.H"
+#include "Conservative2Flux_CompressibleEuler.H"
+#include "Limiter_Minmod.H"
+#include "ReconstructFace_CompressibleEuler.H"
+#include "Riemann_LLF_CompressibleEuler.H"
+#include "EulerFluxAndUpdate_CompressibleEuler.H"
+
+
 // 二维：守恒变量转换为密度、速度、压力和比内能
 // 调用前必须保证 rho > 0，且总能量扣除动能后为正
+// 守恒量 → 原始变量
+// 输出在前，输入在后
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void ConsToPrim(
-    amrex::Real const rho,//ρ
-    amrex::Real const mx,//ρu
-    amrex::Real const my,//ρv
-    amrex::Real const rhoE,//ρE
-    amrex::Real const gamma,//γ
-    amrex::Real& u,
-    amrex::Real& v,
-    amrex::Real& p,
-    amrex::Real& e)
+    amrex::GpuArray<amrex::Real, NPRIM>& V,
+    amrex::Real& e,
+
+    amrex::GpuArray<amrex::Real, NCONS> const& U,
+    amrex::Real const gamma)
 {
-    // 动量除以密度，得到速度
-    u = mx / rho;
-    v = my / rho;
-
-    // 单位体积的动能
-    amrex::Real kinetic =
-        0.5 * (mx * mx + my * my) / rho;
-
-    // 单位体积的内能
-    amrex::Real rhoe = rhoE - kinetic;
-
-    // 单位质量的内能
-    e = rhoe / rho;
-
-    // 理想气体压力
-    p = (gamma - 1.0) * rhoe;
+    Conservative2Primitive(V, e, U, gamma);
 }
+// 二维：原始变量数组转换为守恒变量数组
+// 原始变量 → 守恒量
+// 输出在前，输入在后
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+void PrimToCons(
+    amrex::GpuArray<amrex::Real, NCONS>& U,
+
+    amrex::GpuArray<amrex::Real, NPRIM> const& V,
+    amrex::Real const gamma)
+{
+    Primitive2Conservative(U, V, gamma);
+}
+// 保留原接口，实际计算交给新函数
+AMREX_GPU_HOST_DEVICE
+AMREX_FORCE_INLINE
+void EulerFlux(
+    amrex::GpuArray<amrex::Real, NCONS>& F,
+
+    amrex::GpuArray<amrex::Real, NCONS> const& U,
+    amrex::Real const gamma,
+    int const direction)
+{
+    Conservative2Flux(F, U, gamma, direction);
+}
+
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 
 void Solid_Fraction (amrex::Real& Alpha_Solid,
