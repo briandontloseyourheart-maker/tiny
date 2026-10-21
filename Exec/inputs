@@ -1,17 +1,17 @@
 # Domain
-lo_x = 0.0
-hi_x = 10.0
+lo_x = -10.0
+hi_x = 20.0
 
-lo_y =  0.0
-hi_y =  1.0
+lo_y =  -10.0
+hi_y =  10.0
 
 lo_z =  0.0
-hi_z =  1.0
+hi_z =  3.0
 
-# Space discretization
-n_cell_x = 1280
-n_cell_y = 128
-n_cell_z = 16
+#Space discretization
+n_cell_x = 912
+n_cell_y = 608
+n_cell_z = 48
 
 max_grid_size = 16
 
@@ -52,12 +52,12 @@ is_periodic    =  0    0    1
 # hi_Function_P  =  0.0  0.0  0.0
 
 # Channel flow
-lo_Dirichlet_u =  1.0  1.0  0.0
-lo_Neumann_u   =  0.0  0.0  0.0
+lo_Dirichlet_u =  1.0  0.0  0.0
+lo_Neumann_u   =  0.0  1.0  0.0
 lo_Function_u  =  1.0  0.0  0.0
 
-hi_Dirichlet_u =  0.0  1.0  0.0
-hi_Neumann_u   =  1.0  0.0  0.0
+hi_Dirichlet_u =  0.0  0.0  0.0
+hi_Neumann_u   =  1.0  1.0  0.0
 hi_Function_u  =  0.0  0.0  0.0
 
 lo_Dirichlet_v =  1.0  1.0  0.0
@@ -68,12 +68,12 @@ hi_Dirichlet_v =  0.0  1.0  0.0
 hi_Neumann_v   =  1.0  0.0  0.0
 hi_Function_v  =  0.0  0.0  0.0
 
-lo_Dirichlet_w =  1.0  1.0  0.0
-lo_Neumann_w   =  0.0  0.0  0.0
+lo_Dirichlet_w =  1.0  0.0  0.0
+lo_Neumann_w   =  0.0  1.0  0.0
 lo_Function_w  =  0.0  0.0  0.0
 
-hi_Dirichlet_w =  0.0  1.0  0.0
-hi_Neumann_w   =  1.0  0.0  0.0
+hi_Dirichlet_w =  0.0  0.0  0.0
+hi_Neumann_w   =  1.0  1.0  0.0
 hi_Function_w  =  0.0  0.0  0.0
 
 lo_Dirichlet_P =  0.0  0.0  0.0
@@ -84,14 +84,15 @@ hi_Dirichlet_P =  1.0  0.0  0.0
 hi_Neumann_P   =  0.0  1.0  0.0
 hi_Function_P  =  0.0  0.0  0.0
 
+
 # Time discretization
-Final_Time = 100.0
-Fixed_TimeStep = 0
-dt = 0.0
+Final_Time = 200.0
+Fixed_TimeStep = 1
+dt = 0.005
 CFL = 0.9
 
 # Material properties
-Re = 10.0
+Re = 200.0
 
 # Pressure poisson
 tol_rel = 1.0e-10
@@ -100,14 +101,67 @@ max_fmg_iter = 0
 verbose = 0
 bottom_verbose = 0
 
+# ============================================================
+# Initial conditions
+# Each field can be a constant or an AMReX Parser expression.
+# Available variables: x, y, z, t.  For initial conditions t = 0.
+# Constant pi is also available. # Examples
+# u0 = "1.0+0.05*sin(2*pi*y)" 
+# v0 = "0.02*cos(pi*x)*sin(pi*y)"
+# P0 = "0.5*x"
+# u0_noise = 0.001
+# ============================================================
+
+u0 = "1.0"  
+v0 = "0.0"	
+w0 = "0.0"
+P0 = "0.0"	
+
+# Additive white Gaussian noise: standard deviation sigma.
+# Set to 0.0 to disable noise for that field.
+
+u0_noise = 0.001
+v0_noise = 0.001
+w0_noise = 0.001
+P0_noise = 0.001
+IC_noise_seed = 12345
+
+
+# ============================================================
+# IBM geometry and prescribed centre motion
+# x0(t), y0(t), z0(t) are arbitrary AMReX Parser expressions.
+# Available variable: t.  Constant pi is available.
+# Current geometry is a circular cylinder aligned with z.
+# Examples of prescribed vibration:
+# ibm_x0 = "0.1*cos(2*pi*0.2*t)"
+# ibm_y0 = "0.2*sin(2*pi*0.2*t)"
+# ============================================================
+
+ibm_x0 = "0.0"
+ibm_y0 = "0.0"	
+ibm_z0 = "0.0"
+
+ibm_radius  = 0.5
+ibm_epsilon = 0.01
+
+
+
+# IO controls 
 # Output control
-nsteps = 1000000000
-plot_int = 100
-plotForce_int = 100
+nsteps = 500
+plot_int = 50
+plotForce_int = 1
 
 # Checkpoint control
-chk_int = 500
+chk_int = 100
 restart = -1
+
+
+# Screen print control 
+IO_InfoSteps = 200;
+IO_CFLSteps  = 10;
+
+
 
 amrex.v = 1
 amrex.async_out = 0  # If we use more than 64 processes, async_out will require MPI_THREAD_MULTIPLE
