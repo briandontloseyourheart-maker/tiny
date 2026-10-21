@@ -382,6 +382,7 @@ void advance (MultiFab& u_old, MultiFab& u_new, BoundaryCondition const& Boundar
     mlmg.setMaxFmgIter(max_fmg_iter);
     mlmg.setVerbose(verbose);
     mlmg.setBottomVerbose(bottom_verbose);
+//    mlmg.setBottomSolver(MLMG::BottomSolver::smoother);
 
     // relative and absolute tolerances for linear solve
     const Real tol_abs = 0.0;
