@@ -341,10 +341,11 @@ void main_main ()
             int n = 0;
             const std::string& pltfile = amrex::Concatenate("./plot/plt",n,5);
             WriteSingleLevelPlotfile(pltfile, Output, {AMREX_D_DECL("u", "v", "w"), "P"}, geom, time, 0);
-
+#if (USE_HDF5)
             std::filesystem::create_directories("./plot_HDF5");
 			const std::string& pltfile_HDF5 = amrex::Concatenate("./plot_HDF5/plt",n,5);
 			WriteSingleLevelPlotfileHDF5(pltfile_HDF5, Output, {AMREX_D_DECL("u", "v", "w"), "P"}, geom, time, 0, "None@0");
+#endif
         }
         if (plotForce_int > 0)
         {
@@ -535,10 +536,11 @@ void main_main ()
 
             const std::string& pltfile = amrex::Concatenate("./plot/plt",n,5);
             WriteSingleLevelPlotfile(pltfile, Output, {AMREX_D_DECL("u", "v", "w"), "P"}, geom, time, n);
-
+#if (USE_HDF5)
 			std::filesystem::create_directories("./plot_HDF5");
             const std::string& pltfile_HDF5 = amrex::Concatenate("./plot_HDF5/plt",n,5);
 			WriteSingleLevelPlotfileHDF5(pltfile_HDF5, Output, {AMREX_D_DECL("u", "v", "w"), "P"}, geom, time, n, "None@0");
+#endif
         }
         if (plotForce_int > 0 && n%plotForce_int == 0)
         {
