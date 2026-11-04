@@ -1,9 +1,6 @@
 #ifndef MY_KERNEL_H_
 #define MY_KERNEL_H_
 
-#include <AMReX_FArrayBox.H>
-#include <AMReX_Parser.H>
-#include <AMReX_Random.H>
 #include "ProblemSetup.H"
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
@@ -14,7 +11,9 @@ void Initial_Condition (int i, int j, int k,
                         amrex::Array4<amrex::Real> const& wArray),
                         amrex::Array4<amrex::Real> const& PArray,
                         amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dX,
-                        amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& prob_lo)
+                        amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& prob_lo,
+                        InitialCondition const& initial_condition,
+                        amrex::RandomEngine const& random_engine)
 {
     AMREX_D_TERM(amrex::Real x = prob_lo[0] + (amrex::Real(i) + 0.5) * dX[0];,
                  amrex::Real y = prob_lo[1] + (amrex::Real(j) + 0.5) * dX[1];,
@@ -22,13 +21,23 @@ void Initial_Condition (int i, int j, int k,
 
     amrex::Real AMREX_D_DECL(u, v, w), P;
     Initial_Condition(AMREX_D_DECL(u, v, w), P,
-                      AMREX_D_DECL(x, y, z));
+                      AMREX_D_DECL(x, y, z),
+                      initial_condition);
+
+    amrex::Real u_Random = amrex::RandomNormal(0.0, initial_condition.u_noise, random_engine);
+#if (AMREX_SPACEDIM > 1)
+    amrex::Real v_Random = amrex::RandomNormal(0.0, initial_condition.v_noise, random_engine);
+#endif
+#if (AMREX_SPACEDIM > 2)
+    amrex::Real w_Random = amrex::RandomNormal(0.0, initial_condition.w_noise, random_engine);
+#endif
+    amrex::Real P_Random = amrex::RandomNormal(0.0, initial_condition.P_noise, random_engine);
 
     AMREX_D_TERM(
-    uArray(i,j,k) = u;,
-    vArray(i,j,k) = v;,
-    wArray(i,j,k) = w);
-    PArray(i,j,k) = P;
+    uArray(i,j,k) = u + u_Random;,
+    vArray(i,j,k) = v + v_Random;,
+    wArray(i,j,k) = w + w_Random);
+    PArray(i,j,k) = P + P_Random;
 }
 
 
@@ -44,58 +53,23 @@ void Ghost_Value (amrex::Real& f_Ghost,
 }
 
 
-enum class BoundaryConditionType : int {
-    Periodic,
-    Dirichlet,
-    Neumann,
-    Robin,
-    User
-};
-
-struct BoundaryCondition
-{
-    amrex::Array<BoundaryConditionType,AMREX_SPACEDIM> lo;
-    amrex::Array<BoundaryConditionType,AMREX_SPACEDIM> hi;
-
-    amrex::Array<amrex::Real,AMREX_SPACEDIM> lo_Dirichlet;
-    amrex::Array<amrex::Real,AMREX_SPACEDIM> hi_Dirichlet;
-
-    amrex::Array<amrex::Real,AMREX_SPACEDIM> lo_Neumann;
-    amrex::Array<amrex::Real,AMREX_SPACEDIM> hi_Neumann;
-
-    amrex::Array<amrex::Real,AMREX_SPACEDIM> lo_Function;
-    amrex::Array<amrex::Real,AMREX_SPACEDIM> hi_Function;
-
-    void Initialize (amrex::Array<int,AMREX_SPACEDIM> const& is_periodic)
-    {
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            if (is_periodic[idim] == 1){
-                lo[idim] = BoundaryConditionType::Periodic;
-                hi[idim] = BoundaryConditionType::Periodic;
-            }
-            else{
-                lo[idim] = BoundaryConditionType::Robin;
-                hi[idim] = BoundaryConditionType::Robin;
-            }
-        }
-    };
-};
-
-
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void Boundary_Condition (int i, int j, int k,
                          amrex::Array4<amrex::Real> const& fArray,
                          amrex::Array<BoundaryConditionType,AMREX_SPACEDIM> const& BC_lo,
                          amrex::Array<BoundaryConditionType,AMREX_SPACEDIM> const& BC_hi,
-                         amrex::Array<amrex::Real,AMREX_SPACEDIM> const& BC_lo_Dirichlet,
-                         amrex::Array<amrex::Real,AMREX_SPACEDIM> const& BC_hi_Dirichlet,
-                         amrex::Array<amrex::Real,AMREX_SPACEDIM> const& BC_lo_Neumann,
-                         amrex::Array<amrex::Real,AMREX_SPACEDIM> const& BC_hi_Neumann,
-                         amrex::Array<amrex::Real,AMREX_SPACEDIM> const& BC_lo_Function,
-                         amrex::Array<amrex::Real,AMREX_SPACEDIM> const& BC_hi_Function,
+                         amrex::Array<amrex::ParserExecutor<AMREX_SPACEDIM+1>,AMREX_SPACEDIM> const& BC_lo_Dirichlet,
+                         amrex::Array<amrex::ParserExecutor<AMREX_SPACEDIM+1>,AMREX_SPACEDIM> const& BC_hi_Dirichlet,
+                         amrex::Array<amrex::ParserExecutor<AMREX_SPACEDIM+1>,AMREX_SPACEDIM> const& BC_lo_Neumann,
+                         amrex::Array<amrex::ParserExecutor<AMREX_SPACEDIM+1>,AMREX_SPACEDIM> const& BC_hi_Neumann,
+                         amrex::Array<amrex::ParserExecutor<AMREX_SPACEDIM+1>,AMREX_SPACEDIM> const& BC_lo_Function,
+                         amrex::Array<amrex::ParserExecutor<AMREX_SPACEDIM+1>,AMREX_SPACEDIM> const& BC_hi_Function,
                          AMREX_D_DECL(int ilo, int jlo, int klo),
                          AMREX_D_DECL(int ihi, int jhi, int khi),
-                         amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dX)
+                         AMREX_D_DECL(amrex::Real const& xlo, amrex::Real const& ylo, amrex::Real const& zlo),
+                         AMREX_D_DECL(amrex::Real const& xhi, amrex::Real const& yhi, amrex::Real const& zhi),
+                         AMREX_D_DECL(amrex::Real const&  dx, amrex::Real const&  dy, amrex::Real const&  dz),
+                         amrex::Real const& time)
 {
     int ID_Dimension = 0;
     if (i < ilo){
@@ -105,10 +79,15 @@ void Boundary_Condition (int i, int j, int k,
             int kInterior = k;
             amrex::Real fInterior = fArray(iInterior, jInterior, kInterior);
 
-            amrex::Real BC_Dirichlet = BC_lo_Dirichlet[ID_Dimension];
-            amrex::Real BC_Neumann   = BC_lo_Neumann  [ID_Dimension];
-            amrex::Real BC_Function  = BC_lo_Function [ID_Dimension];
-            amrex::Real CellSize     = dX             [ID_Dimension];
+            AMREX_D_TERM(
+            amrex::Real xBC = xlo                            ;,
+            amrex::Real yBC = ylo + (amrex::Real(j) + 0.5)*dy;,
+            amrex::Real zBC = zlo + (amrex::Real(k) + 0.5)*dz);
+
+            amrex::Real BC_Dirichlet = BC_lo_Dirichlet[ID_Dimension](AMREX_D_DECL(xBC, yBC, zBC), time);
+            amrex::Real BC_Neumann   = BC_lo_Neumann  [ID_Dimension](AMREX_D_DECL(xBC, yBC, zBC), time);
+            amrex::Real BC_Function  = BC_lo_Function [ID_Dimension](AMREX_D_DECL(xBC, yBC, zBC), time);
+            amrex::Real CellSize     = dx;
 
             amrex::Real f_Ghost;
             Ghost_Value(f_Ghost,
@@ -125,10 +104,15 @@ void Boundary_Condition (int i, int j, int k,
             int kInterior = k;
             amrex::Real fInterior = fArray(iInterior, jInterior, kInterior);
 
-            amrex::Real BC_Dirichlet = BC_hi_Dirichlet[ID_Dimension];
-            amrex::Real BC_Neumann   = BC_hi_Neumann  [ID_Dimension];
-            amrex::Real BC_Function  = BC_hi_Function [ID_Dimension];
-            amrex::Real CellSize     = dX             [ID_Dimension];
+            AMREX_D_TERM(
+            amrex::Real xBC = xhi                            ;,
+            amrex::Real yBC = ylo + (amrex::Real(j) + 0.5)*dy;,
+            amrex::Real zBC = zlo + (amrex::Real(k) + 0.5)*dz);
+
+            amrex::Real BC_Dirichlet = BC_hi_Dirichlet[ID_Dimension](AMREX_D_DECL(xBC, yBC, zBC), time);
+            amrex::Real BC_Neumann   = BC_hi_Neumann  [ID_Dimension](AMREX_D_DECL(xBC, yBC, zBC), time);
+            amrex::Real BC_Function  = BC_hi_Function [ID_Dimension](AMREX_D_DECL(xBC, yBC, zBC), time);
+            amrex::Real CellSize     = dx;
 
             amrex::Real f_Ghost;
             Ghost_Value(f_Ghost,
@@ -147,10 +131,15 @@ void Boundary_Condition (int i, int j, int k,
             int kInterior = k;
             amrex::Real fInterior = fArray(iInterior, jInterior, kInterior);
 
-            amrex::Real BC_Dirichlet = BC_lo_Dirichlet[ID_Dimension];
-            amrex::Real BC_Neumann   = BC_lo_Neumann  [ID_Dimension];
-            amrex::Real BC_Function  = BC_lo_Function [ID_Dimension];
-            amrex::Real CellSize     = dX             [ID_Dimension];
+            AMREX_D_TERM(
+            amrex::Real xBC = xlo + (amrex::Real(i) + 0.5)*dx;,
+            amrex::Real yBC = ylo                            ;,
+            amrex::Real zBC = zlo + (amrex::Real(k) + 0.5)*dz);
+
+            amrex::Real BC_Dirichlet = BC_lo_Dirichlet[ID_Dimension](AMREX_D_DECL(xBC, yBC, zBC), time);
+            amrex::Real BC_Neumann   = BC_lo_Neumann  [ID_Dimension](AMREX_D_DECL(xBC, yBC, zBC), time);
+            amrex::Real BC_Function  = BC_lo_Function [ID_Dimension](AMREX_D_DECL(xBC, yBC, zBC), time);
+            amrex::Real CellSize     = dy;
 
             amrex::Real f_Ghost;
             Ghost_Value(f_Ghost,
@@ -167,10 +156,15 @@ void Boundary_Condition (int i, int j, int k,
             int kInterior = k;
             amrex::Real fInterior = fArray(iInterior, jInterior, kInterior);
 
-            amrex::Real BC_Dirichlet = BC_hi_Dirichlet[ID_Dimension];
-            amrex::Real BC_Neumann   = BC_hi_Neumann  [ID_Dimension];
-            amrex::Real BC_Function  = BC_hi_Function [ID_Dimension];
-            amrex::Real CellSize     = dX             [ID_Dimension];
+            AMREX_D_TERM(
+            amrex::Real xBC = xlo + (amrex::Real(i) + 0.5)*dx;,
+            amrex::Real yBC = yhi                            ;,
+            amrex::Real zBC = zlo + (amrex::Real(k) + 0.5)*dz);
+
+            amrex::Real BC_Dirichlet = BC_hi_Dirichlet[ID_Dimension](AMREX_D_DECL(xBC, yBC, zBC), time);
+            amrex::Real BC_Neumann   = BC_hi_Neumann  [ID_Dimension](AMREX_D_DECL(xBC, yBC, zBC), time);
+            amrex::Real BC_Function  = BC_hi_Function [ID_Dimension](AMREX_D_DECL(xBC, yBC, zBC), time);
+            amrex::Real CellSize     = dy;
 
             amrex::Real f_Ghost;
             Ghost_Value(f_Ghost,
@@ -190,10 +184,15 @@ void Boundary_Condition (int i, int j, int k,
             int kInterior = klo;
             amrex::Real fInterior = fArray(iInterior, jInterior, kInterior);
 
-            amrex::Real BC_Dirichlet = BC_lo_Dirichlet[ID_Dimension];
-            amrex::Real BC_Neumann   = BC_lo_Neumann  [ID_Dimension];
-            amrex::Real BC_Function  = BC_lo_Function [ID_Dimension];
-            amrex::Real CellSize     = dX             [ID_Dimension];
+            AMREX_D_TERM(
+            amrex::Real xBC = xlo + (amrex::Real(i) + 0.5)*dx;,
+            amrex::Real yBC = ylo + (amrex::Real(j) + 0.5)*dy;,
+            amrex::Real zBC = zlo                            );
+
+            amrex::Real BC_Dirichlet = BC_lo_Dirichlet[ID_Dimension](AMREX_D_DECL(xBC, yBC, zBC), time);
+            amrex::Real BC_Neumann   = BC_lo_Neumann  [ID_Dimension](AMREX_D_DECL(xBC, yBC, zBC), time);
+            amrex::Real BC_Function  = BC_lo_Function [ID_Dimension](AMREX_D_DECL(xBC, yBC, zBC), time);
+            amrex::Real CellSize     = dz;
 
             amrex::Real f_Ghost;
             Ghost_Value(f_Ghost,
@@ -210,10 +209,15 @@ void Boundary_Condition (int i, int j, int k,
             int kInterior = khi;
             amrex::Real fInterior = fArray(iInterior, jInterior, kInterior);
 
-            amrex::Real BC_Dirichlet = BC_hi_Dirichlet[ID_Dimension];
-            amrex::Real BC_Neumann   = BC_hi_Neumann  [ID_Dimension];
-            amrex::Real BC_Function  = BC_hi_Function [ID_Dimension];
-            amrex::Real CellSize     = dX             [ID_Dimension];
+            AMREX_D_TERM(
+            amrex::Real xBC = xlo + (amrex::Real(i) + 0.5)*dx;,
+            amrex::Real yBC = ylo + (amrex::Real(j) + 0.5)*dy;,
+            amrex::Real zBC = zhi                            );
+
+            amrex::Real BC_Dirichlet = BC_hi_Dirichlet[ID_Dimension](AMREX_D_DECL(xBC, yBC, zBC), time);
+            amrex::Real BC_Neumann   = BC_hi_Neumann  [ID_Dimension](AMREX_D_DECL(xBC, yBC, zBC), time);
+            amrex::Real BC_Function  = BC_hi_Function [ID_Dimension](AMREX_D_DECL(xBC, yBC, zBC), time);
+            amrex::Real CellSize     = dz;
 
             amrex::Real f_Ghost;
             Ghost_Value(f_Ghost,
@@ -549,6 +553,7 @@ void Velocity_Update (int i, int j, int k,
                       amrex::Real const& z),
                       amrex::Real const& time,
                       amrex::Real const& nu,
+                      ImmersedBoundary const& immersed_boundary,
                       int ID_VelocityCenter,
                       int ID_Dimension)
 {
@@ -574,11 +579,13 @@ void Velocity_Update (int i, int j, int k,
 
     amrex::Real Alpha_Solid;
     Solid_Fraction(Alpha_Solid,
-      AMREX_D_DECL(x, y, z), time+dt);
+      AMREX_D_DECL(x, y, z), time+dt,
+                   immersed_boundary);
 
     amrex::Array<amrex::Real,AMREX_SPACEDIM> Vel_Solid;
     Solid_Velocity(Vel_Solid,
-      AMREX_D_DECL(x, y, z), time+dt);
+      AMREX_D_DECL(x, y, z), time+dt,
+                   immersed_boundary);
 
     amrex::Real Cd;
     Drag_Coefficient(Cd,

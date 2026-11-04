@@ -19,70 +19,70 @@ max_grid_size = 16
 is_periodic    =  0    0    1
 
 # Lid-driven cavity
-# lo_Dirichlet_u =  1.0  1.0  0.0
-# lo_Neumann_u   =  0.0  0.0  0.0
-# lo_Function_u  =  0.0  0.0  0.0
+# BC_u.lo_Dirichlet =  "1.0"  "1.0"  "0.0"
+# BC_u.lo_Neumann   =  "0.0"  "0.0"  "0.0"
+# BC_u.lo_Function  =  "0.0"  "0.0"  "0.0"
 
-# hi_Dirichlet_u =  1.0  1.0  0.0
-# hi_Neumann_u   =  0.0  0.0  0.0
-# hi_Function_u  =  0.0  1.0  0.0
+# BC_u.hi_Dirichlet =  "1.0"  "1.0"  "0.0"
+# BC_u.hi_Neumann   =  "0.0"  "0.0"  "0.0"
+# BC_u.hi_Function  =  "0.0"  "1.0"  "0.0"
 
-# lo_Dirichlet_v =  1.0  1.0  0.0
-# lo_Neumann_v   =  0.0  0.0  0.0
-# lo_Function_v  =  0.0  0.0  0.0
+# BC_v.lo_Dirichlet =  "1.0"  "1.0"  "0.0"
+# BC_v.lo_Neumann   =  "0.0"  "0.0"  "0.0"
+# BC_v.lo_Function  =  "0.0"  "0.0"  "0.0"
 
-# hi_Dirichlet_v =  1.0  1.0  0.0
-# hi_Neumann_v   =  0.0  0.0  0.0
-# hi_Function_v  =  0.0  0.0  0.0
+# BC_v.hi_Dirichlet =  "1.0"  "1.0"  "0.0"
+# BC_v.hi_Neumann   =  "0.0"  "0.0"  "0.0"
+# BC_v.hi_Function  =  "0.0"  "0.0"  "0.0"
 
-# lo_Dirichlet_w =  1.0  1.0  0.0
-# lo_Neumann_w   =  0.0  0.0  0.0
-# lo_Function_w  =  0.0  0.0  0.0
+# BC_w.lo_Dirichlet =  "1.0"  "1.0"  "0.0"
+# BC_w.lo_Neumann   =  "0.0"  "0.0"  "0.0"
+# BC_w.lo_Function  =  "0.0"  "0.0"  "0.0"
 
-# hi_Dirichlet_w =  0.0  1.0  0.0
-# hi_Neumann_w   =  1.0  0.0  0.0
-# hi_Function_w  =  0.0  0.0  0.0
+# BC_w.hi_Dirichlet =  "0.0"  "1.0"  "0.0"
+# BC_w.hi_Neumann   =  "1.0"  "0.0"  "0.0"
+# BC_w.hi_Function  =  "0.0"  "0.0"  "0.0"
 
-# lo_Dirichlet_P =  0.0  0.0  0.0
-# lo_Neumann_P   =  1.0  1.0  0.0
-# lo_Function_P  =  0.0  0.0  0.0
+# BC_P.lo_Dirichlet =  "0.0"  "0.0"  "0.0"
+# BC_P.lo_Neumann   =  "1.0"  "1.0"  "0.0"
+# BC_P.lo_Function  =  "0.0"  "0.0"  "0.0"
 
-# hi_Dirichlet_P =  0.0  0.0  0.0
-# hi_Neumann_P   =  1.0  1.0  0.0
-# hi_Function_P  =  0.0  0.0  0.0
+# BC_P.hi_Dirichlet =  "0.0"  "0.0"  "0.0"
+# BC_P.hi_Neumann   =  "1.0"  "1.0"  "0.0"
+# BC_P.hi_Function  =  "0.0"  "0.0"  "0.0"
 
 # Channel flow
-lo_Dirichlet_u =  1.0  0.0  0.0
-lo_Neumann_u   =  0.0  1.0  0.0
-lo_Function_u  =  1.0  0.0  0.0
+BC_u.lo_Dirichlet =  "1.0"  "0.0"  "0.0"
+BC_u.lo_Neumann   =  "0.0"  "1.0"  "0.0"
+BC_u.lo_Function  =  "1.0"  "0.0"  "0.0"
 
-hi_Dirichlet_u =  0.0  0.0  0.0
-hi_Neumann_u   =  1.0  1.0  0.0
-hi_Function_u  =  0.0  0.0  0.0
+BC_u.hi_Dirichlet =  "0.0"  "0.0"  "0.0"
+BC_u.hi_Neumann   =  "1.0"  "1.0"  "0.0"
+BC_u.hi_Function  =  "0.0"  "0.0"  "0.0"
 
-lo_Dirichlet_v =  1.0  1.0  0.0
-lo_Neumann_v   =  0.0  0.0  0.0
-lo_Function_v  =  0.0  0.0  0.0
+BC_v.lo_Dirichlet =  "1.0"  "1.0"  "0.0"
+BC_v.lo_Neumann   =  "0.0"  "0.0"  "0.0"
+BC_v.lo_Function  =  "0.0"  "0.0"  "0.0"
 
-hi_Dirichlet_v =  0.0  1.0  0.0
-hi_Neumann_v   =  1.0  0.0  0.0
-hi_Function_v  =  0.0  0.0  0.0
+BC_v.hi_Dirichlet =  "0.0"  "1.0"  "0.0"
+BC_v.hi_Neumann   =  "1.0"  "0.0"  "0.0"
+BC_v.hi_Function  =  "0.0"  "0.0"  "0.0"
 
-lo_Dirichlet_w =  1.0  0.0  0.0
-lo_Neumann_w   =  0.0  1.0  0.0
-lo_Function_w  =  0.0  0.0  0.0
+BC_w.lo_Dirichlet =  "1.0"  "0.0"  "0.0"
+BC_w.lo_Neumann   =  "0.0"  "1.0"  "0.0"
+BC_w.lo_Function  =  "0.0"  "0.0"  "0.0"
 
-hi_Dirichlet_w =  0.0  0.0  0.0
-hi_Neumann_w   =  1.0  1.0  0.0
-hi_Function_w  =  0.0  0.0  0.0
+BC_w.hi_Dirichlet =  "0.0"  "0.0"  "0.0"
+BC_w.hi_Neumann   =  "1.0"  "1.0"  "0.0"
+BC_w.hi_Function  =  "0.0"  "0.0"  "0.0"
 
-lo_Dirichlet_P =  0.0  0.0  0.0
-lo_Neumann_P   =  1.0  1.0  0.0
-lo_Function_P  =  0.0  0.0  0.0
+BC_P.lo_Dirichlet =  "0.0"  "0.0"  "0.0"
+BC_P.lo_Neumann   =  "1.0"  "1.0"  "0.0"
+BC_P.lo_Function  =  "0.0"  "0.0"  "0.0"
 
-hi_Dirichlet_P =  1.0  0.0  0.0
-hi_Neumann_P   =  0.0  1.0  0.0
-hi_Function_P  =  0.0  0.0  0.0
+BC_P.hi_Dirichlet =  "1.0"  "0.0"  "0.0"
+BC_P.hi_Neumann   =  "0.0"  "1.0"  "0.0"
+BC_P.hi_Function  =  "0.0"  "0.0"  "0.0"
 
 
 # Time discretization
@@ -106,25 +106,25 @@ bottom_verbose = 0
 # Each field can be a constant or an AMReX Parser expression.
 # Available variables: x, y, z, t.  For initial conditions t = 0.
 # Constant pi is also available. # Examples
-# u0 = "1.0+0.05*sin(2*pi*y)" 
-# v0 = "0.02*cos(pi*x)*sin(pi*y)"
-# P0 = "0.5*x"
-# u0_noise = 0.001
+# IC.u = "1.0+0.05*sin(2*pi*y)" 
+# IC.v = "0.02*cos(pi*x)*sin(pi*y)"
+# IC.P = "0.5*x"
+# IC.u_noise = 0.001
 # ============================================================
 
-u0 = "1.0"  
-v0 = "0.0"	
-w0 = "0.0"
-P0 = "0.0"	
+IC.u = "1.0"  
+IC.v = "0.0"	
+IC.w = "0.0"
+IC.P = "0.0"	
 
 # Additive white Gaussian noise: standard deviation sigma.
 # Set to 0.0 to disable noise for that field.
 
-u0_noise = 0.001
-v0_noise = 0.001
-w0_noise = 0.001
-P0_noise = 0.001
-IC_noise_seed = 12345
+IC.u_noise = 0.001
+IC.v_noise = 0.001
+IC.w_noise = 0.001
+IC.P_noise = 0.001
+IC.noise_seed = 12345
 
 
 # ============================================================
@@ -133,16 +133,16 @@ IC_noise_seed = 12345
 # Available variable: t.  Constant pi is available.
 # Current geometry is a circular cylinder aligned with z.
 # Examples of prescribed vibration:
-# ibm_x0 = "0.1*cos(2*pi*0.2*t)"
-# ibm_y0 = "0.2*sin(2*pi*0.2*t)"
+# IB.x = "0.1*cos(2*pi*0.2*t)"
+# IB.y = "0.2*sin(2*pi*0.2*t)"
 # ============================================================
 
-ibm_x0 = "0.0"
-ibm_y0 = "0.0"	
-ibm_z0 = "0.0"
+IB.x = "0.0"
+IB.y = "0.0"
+IB.z = "0.0"
 
-ibm_radius  = 0.5
-ibm_epsilon = 0.01
+IB.radius  = 0.5
+IB.epsilon = 0.01
 
 
 
