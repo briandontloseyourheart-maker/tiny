@@ -32,9 +32,9 @@ void main_main ()
     int max_grid_size;
 
     Array<int,AMREX_SPACEDIM> is_periodic;
-    BoundaryCondition AMREX_D_DECL(BoundaryCondition_u, BoundaryCondition_v, BoundaryCondition_w), BoundaryCondition_P;
 
     Real Final_Time, dt, CFL;
+    Real CFL_abort;
     int Fixed_TimeStep;
 
     Real Re, nu;
@@ -62,7 +62,6 @@ void main_main ()
         // ParmParse is way of reading inputs from the inputs file
         ParmParse pp;
         Vector<int> Vector_Int(AMREX_SPACEDIM);
-        Vector<Real> Vector_Real(AMREX_SPACEDIM);
 
         AMREX_D_TERM(
         pp.get("lo_x",lo_x);,
@@ -87,111 +86,6 @@ void main_main ()
             is_periodic[idim] = Vector_Int[idim];
         }
 
-        pp.getarr("lo_Dirichlet_u",Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_u.lo_Dirichlet[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Dirichlet_u",Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_u.hi_Dirichlet[idim] = Vector_Real[idim];
-        }
-        pp.getarr("lo_Neumann_u"  ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_u.lo_Neumann[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Neumann_u"  ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_u.hi_Neumann[idim] = Vector_Real[idim];
-        }
-        pp.getarr("lo_Function_u" ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_u.lo_Function[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Function_u" ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_u.hi_Function[idim] = Vector_Real[idim];
-        }
-        BoundaryCondition_u.Initialize(is_periodic);
-#if (AMREX_SPACEDIM > 1)
-        pp.getarr("lo_Dirichlet_v",Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_v.lo_Dirichlet[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Dirichlet_v",Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_v.hi_Dirichlet[idim] = Vector_Real[idim];
-        }
-        pp.getarr("lo_Neumann_v"  ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_v.lo_Neumann[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Neumann_v"  ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_v.hi_Neumann[idim] = Vector_Real[idim];
-        }
-        pp.getarr("lo_Function_v" ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_v.lo_Function[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Function_v" ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_v.hi_Function[idim] = Vector_Real[idim];
-        }
-        BoundaryCondition_v.Initialize(is_periodic);
-#endif
-#if (AMREX_SPACEDIM > 2)
-        pp.getarr("lo_Dirichlet_w",Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_w.lo_Dirichlet[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Dirichlet_w",Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_w.hi_Dirichlet[idim] = Vector_Real[idim];
-        }
-        pp.getarr("lo_Neumann_w"  ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_w.lo_Neumann[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Neumann_w"  ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_w.hi_Neumann[idim] = Vector_Real[idim];
-        }
-        pp.getarr("lo_Function_w" ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_w.lo_Function[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Function_w" ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_w.hi_Function[idim] = Vector_Real[idim];
-        }
-        BoundaryCondition_w.Initialize(is_periodic);
-#endif
-        pp.getarr("lo_Dirichlet_P",Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_P.lo_Dirichlet[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Dirichlet_P",Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_P.hi_Dirichlet[idim] = Vector_Real[idim];
-        }
-        pp.getarr("lo_Neumann_P"  ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_P.lo_Neumann[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Neumann_P"  ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_P.hi_Neumann[idim] = Vector_Real[idim];
-        }
-        pp.getarr("lo_Function_P" ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_P.lo_Function[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Function_P" ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_P.hi_Function[idim] = Vector_Real[idim];
-        }
-        BoundaryCondition_P.Initialize(is_periodic);
-
         pp.get("Final_Time",Final_Time);
         pp.get("Fixed_TimeStep",Fixed_TimeStep);
         if (Fixed_TimeStep){
@@ -200,6 +94,10 @@ void main_main ()
         else{
             pp.get("CFL",CFL);
         }
+
+        // CFL abort limit
+		CFL_abort = 100.0;
+		pp.query("CFL_abort", CFL_abort);
 
         pp.get("Re",Re);
         nu = 1.0/Re;
@@ -248,6 +146,25 @@ void main_main ()
         nsteps = 10;
         pp.query("nsteps",nsteps);
     }
+
+    InitialCondition initial_condition;
+    initial_condition.Initialize();
+
+    BoundaryCondition BoundaryCondition_u;
+    BoundaryCondition_u.Initialize("BC_u", is_periodic);
+#if (AMREX_SPACEDIM > 1)
+    BoundaryCondition BoundaryCondition_v;
+    BoundaryCondition_v.Initialize("BC_v", is_periodic);
+#endif
+#if (AMREX_SPACEDIM > 2)
+    BoundaryCondition BoundaryCondition_w;
+    BoundaryCondition_w.Initialize("BC_w", is_periodic);
+#endif
+    BoundaryCondition BoundaryCondition_P;
+    BoundaryCondition_P.Initialize("BC_P", is_periodic);
+
+    ImmersedBoundary immersed_boundary;
+    immersed_boundary.Initialize();
 
     // make Geometry
     Geometry geom;
@@ -326,7 +243,8 @@ void main_main ()
                           w_new, BoundaryCondition_w,
 #endif
                           P_new, Vel_new,
-                          geom);
+                          geom,
+                          initial_condition);
 
         // Write a plotfile of the initial data if plot_int > 0 (plot_int was defined in the inputs file)
         if (plot_int > 0)
@@ -441,23 +359,74 @@ void main_main ()
     } else {
         amrex::Print() << "Disabled\n";
     }
-	
+    amrex::Print() << "          CFL Abort: " << CFL_abort << "\n";
     if (restart <= 0) {
         amrex::Print() << "Initial Conditions:\n"
-                       << "  - Field u: 0.0001\n";
+                       << "  - u(x,y,z): " << initial_condition.u_parser.expr();
+        if (initial_condition.u_noise > 0.0){
+            amrex::Print() << " + Gaussian noise (sigma=" << initial_condition.u_noise << ")";
+        }
+        amrex::Print() << "\n";
 #if (AMREX_SPACEDIM > 1)
-        amrex::Print() << "  - Field v: 0.0001\n";
+        amrex::Print() << "  - v(x,y,z): " << initial_condition.v_parser.expr();
+        if (initial_condition.v_noise > 0.0){
+            amrex::Print() << " + Gaussian noise (sigma=" << initial_condition.v_noise << ")";
+        }
+        amrex::Print() << "\n";
 #endif
 #if (AMREX_SPACEDIM > 2)
-        amrex::Print() << "  - Field w: 0.001\n";
+        amrex::Print() << "  - w(x,y,z): " << initial_condition.w_parser.expr();
+        if (initial_condition.w_noise > 0.0){
+            amrex::Print() << " + Gaussian noise (sigma=" << initial_condition.w_noise << ")";
+        }
+        amrex::Print() << "\n";
 #endif
-        amrex::Print() << "  - Field P: 0.0\n";
-    } else {
+        amrex::Print() << "  - P(x,y,z): " << initial_condition.P_parser.expr();
+        if (initial_condition.P_noise > 0.0){
+            amrex::Print() << " + Gaussian noise (sigma=" << initial_condition.P_noise << ")";
+        }
+        amrex::Print() << "\n";
+
+        if (AMREX_D_TERM(initial_condition.u_noise > 0.0, || initial_condition.v_noise > 0.0, || initial_condition.w_noise > 0.0) || initial_condition.P_noise > 0.0){
+            amrex::Print() << "  - Noise seed: " << initial_condition.noise_seed << "\n";
+        }
+    }
+    else{
         amrex::Print() << "Initial Conditions:\n"
                        << "  - Restart from checkpoint: "
                        << amrex::Concatenate("chk", restart, 5) << "\n"
                        << "  - Restart time: " << time << "\n";
     }
+    amrex::Print() << "IBM Geometry / Prescribed Motion:\n"
+                   << "  - x_Center(t): " << immersed_boundary.x_parser.expr() << "\n"
+#if (AMREX_SPACEDIM > 1)
+                   << "  - y_Center(t): " << immersed_boundary.y_parser.expr() << "\n"
+#endif
+#if (AMREX_SPACEDIM > 2)
+                   << "  - z_Center(t): " << immersed_boundary.z_parser.expr() << "\n"
+#endif
+                   << "  - Centre at t=0: ("
+                   << immersed_boundary.x(0.0)
+#if (AMREX_SPACEDIM > 1)
+                   << ", " << immersed_boundary.y(0.0)
+#endif
+#if (AMREX_SPACEDIM > 2)
+                   << ", " << immersed_boundary.z(0.0)
+#endif
+                   << ")\n"
+                   << "  - Radius: " << immersed_boundary.radius << "\n"
+                   << "  - Epsilon: " << immersed_boundary.epsilon << "\n"
+#if (AMREX_SPACEDIM == 1)
+                   << "  - Solid velocity: d(x_Center)/dt "
+#endif
+#if (AMREX_SPACEDIM == 2)
+                   << "  - Solid velocity: d(x_Center, y_Center)/dt "
+#endif
+#if (AMREX_SPACEDIM == 3)
+                   << "  - Solid velocity: d(x_Center, y_Center, z_Center)/dt "
+#endif
+                   << "(centred difference)\n";
+
     amrex::Print() << "============================================================\n";
 
     // Timer used for Nektar++-style interval timing.  ParallelDescriptor::second()
@@ -481,6 +450,27 @@ void main_main ()
         GpuArray<Real,AMREX_SPACEDIM> dX = geom.CellSizeArray();
         Real CFL_Adv = dt*std::max({AMREX_D_DECL(Vel_new[0].norminf()/dX[0], Vel_new[1].norminf()/dX[1], Vel_new[2].norminf()/dX[2])});
         Real CFL_Dif = nu*dt*(AMREX_D_TERM(2.0/dX[0]/dX[0], + 2.0/dX[1]/dX[1], + 2.0/dX[2]/dX[2]));
+        // ============================================================
+        // Abort simulation if CFL becomes too large or invalid
+        // ============================================================
+		if (!std::isfinite(CFL_Adv) ||
+			!std::isfinite(CFL_Dif) ||
+			CFL_Adv > CFL_abort ||
+			CFL_Dif > CFL_abort)
+		{
+			amrex::Print()
+			<< "\n============================================================\n"
+			<< "Simulation terminated: CFL exceeded stability limit.\n"
+			<< "Step      = " << n << "\n"
+			<< "Time      = " << time << "\n"
+			<< "dt        = " << dt << "\n"
+			<< "CFL_Adv   = " << CFL_Adv << "\n"
+			<< "CFL_Dif   = " << CFL_Dif << "\n"
+			<< "CFL_abort = " << CFL_abort  << "\n"
+			<< "============================================================\n";
+
+			break;
+		}
 
         AMREX_D_TERM(
         MultiFab::Copy(u_old, u_new, 0, 0, 1, 0);,
@@ -503,6 +493,7 @@ void main_main ()
                 Vel_old, Vel_new, Force_Hydrodynamic,
                 geom, dt, time,
                 nu,
+                immersed_boundary,
                 tol_rel, max_iter, max_fmg_iter, verbose, bottom_verbose);
         time = time + dt;
 
@@ -517,11 +508,11 @@ void main_main ()
      
         if (IO_CFLSteps > 0 && n % IO_CFLSteps == 0)
         {
-            amrex::Print()  << "Advanced step " << n
-							<< " at Time = " << time
-							<< " CFL: Adv = " << CFL_Adv
-                           << "    Dif = " << CFL_Dif
-                           << "    dt = " << dt << "\n";
+            amrex::Print() << "Advanced step " << n
+                           << " at Time = " << time
+                           << " with dt = " << dt
+                           << " CFL_Adv = " << CFL_Adv
+                           << " CFL_Dif = " << CFL_Dif << "\n";
         }
 
         // Write a plotfile of the current data (plot_int was defined in the inputs file)

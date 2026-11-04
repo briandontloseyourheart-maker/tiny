@@ -1,5 +1,5 @@
-#ifndef MYFUNC_H_
-#define MYFUNC_H_
+#ifndef MY_FUNC_H_
+#define MY_FUNC_H_
 
 #include <AMReX_Geometry.H>
 #include <AMReX_MultiFab.H>
@@ -51,6 +51,7 @@ void advance (amrex::MultiFab& u_old, amrex::MultiFab& u_new, BoundaryCondition 
               amrex::Real const& dt,
               amrex::Real const& time,
               amrex::Real const& nu,
+              ImmersedBoundary const& immersed_boundary,
               amrex::Real const& tol_rel,
               int max_iter,
               int max_fmg_iter,
@@ -66,9 +67,11 @@ void Initial_Condition (amrex::MultiFab& u_new, BoundaryCondition const& Boundar
 #endif
                         amrex::MultiFab& P_new,
                         amrex::Array<amrex::MultiFab,AMREX_SPACEDIM>& Vel_new,
-                        amrex::Geometry const& geom);
+                        amrex::Geometry const& geom,
+                        InitialCondition const& initial_condition);
 
 void Boundary_Condition (amrex::MultiFab& f,
                          BoundaryCondition const& BoundaryCondition_f,
-                         amrex::Geometry const& geom);
+                         amrex::Geometry const& geom,
+                         amrex::Real const& time);
 #endif
