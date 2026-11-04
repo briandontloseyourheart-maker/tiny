@@ -35,6 +35,7 @@ struct InitialCondition
         std::string u_expr = "0.0001";
         pp.query("u", u_expr);
         u_parser.define(u_expr);
+        u_parser.setConstant("pi", amrex::Math::pi<amrex::Real>());
         u_parser.registerVariables({AMREX_D_DECL("x", "y", "z")});
         u = u_parser.compile<AMREX_SPACEDIM>();
 
@@ -46,6 +47,7 @@ struct InitialCondition
         std::string v_expr = "0.0001";
         pp.query("v", v_expr);
         v_parser.define(v_expr);
+        v_parser.setConstant("pi", amrex::Math::pi<amrex::Real>());
         v_parser.registerVariables({AMREX_D_DECL("x", "y", "z")});
         v = v_parser.compile<AMREX_SPACEDIM>();
 
@@ -58,6 +60,7 @@ struct InitialCondition
         std::string w_expr = "0.001";
         pp.query("w", w_expr);
         w_parser.define(w_expr);
+        w_parser.setConstant("pi", amrex::Math::pi<amrex::Real>());
         w_parser.registerVariables({AMREX_D_DECL("x", "y", "z")});
         w = w_parser.compile<AMREX_SPACEDIM>();
 
@@ -69,6 +72,7 @@ struct InitialCondition
         std::string P_expr = "0.0";
         pp.query("P", P_expr);
         P_parser.define(P_expr);
+        P_parser.setConstant("pi", amrex::Math::pi<amrex::Real>());
         P_parser.registerVariables({AMREX_D_DECL("x", "y", "z")});
         P = P_parser.compile<AMREX_SPACEDIM>();
 
@@ -112,12 +116,14 @@ struct ImmersedBoundary
         std::string x_expr = "0.0";
         pp.query("x", x_expr);
         x_parser.define(x_expr);
+        x_parser.setConstant("pi", amrex::Math::pi<amrex::Real>());
         x_parser.registerVariables({"t"});
         x = x_parser.compile<1>();
 #if (AMREX_SPACEDIM > 1)
         std::string y_expr = "0.0";
         pp.query("y", y_expr);
         y_parser.define(y_expr);
+        y_parser.setConstant("pi", amrex::Math::pi<amrex::Real>());
         y_parser.registerVariables({"t"});
         y = y_parser.compile<1>();
 #endif
@@ -125,6 +131,7 @@ struct ImmersedBoundary
         std::string z_expr = "0.0";
         pp.query("z", z_expr);
         z_parser.define(z_expr);
+        z_parser.setConstant("pi", amrex::Math::pi<amrex::Real>());
         z_parser.registerVariables({"t"});
         z = z_parser.compile<1>();
 #endif
@@ -237,26 +244,32 @@ struct BoundaryCondition
 
         for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
             lo_Dirichlet_parser[idim].define(lo_Dirichlet_expr[idim]);
+            lo_Dirichlet_parser[idim].setConstant("pi", amrex::Math::pi<amrex::Real>());
             lo_Dirichlet_parser[idim].registerVariables({AMREX_D_DECL("x", "y", "z"), "t"});
             lo_Dirichlet[idim] = lo_Dirichlet_parser[idim].compile<AMREX_SPACEDIM+1>();
 
             hi_Dirichlet_parser[idim].define(hi_Dirichlet_expr[idim]);
+            hi_Dirichlet_parser[idim].setConstant("pi", amrex::Math::pi<amrex::Real>());
             hi_Dirichlet_parser[idim].registerVariables({AMREX_D_DECL("x", "y", "z"), "t"});
             hi_Dirichlet[idim] = hi_Dirichlet_parser[idim].compile<AMREX_SPACEDIM+1>();
 
             lo_Neumann_parser[idim].define(lo_Neumann_expr[idim]);
+            lo_Neumann_parser[idim].setConstant("pi", amrex::Math::pi<amrex::Real>());
             lo_Neumann_parser[idim].registerVariables({AMREX_D_DECL("x", "y", "z"), "t"});
             lo_Neumann[idim] = lo_Neumann_parser[idim].compile<AMREX_SPACEDIM+1>();
 
             hi_Neumann_parser[idim].define(hi_Neumann_expr[idim]);
+            hi_Neumann_parser[idim].setConstant("pi", amrex::Math::pi<amrex::Real>());
             hi_Neumann_parser[idim].registerVariables({AMREX_D_DECL("x", "y", "z"), "t"});
             hi_Neumann[idim] = hi_Neumann_parser[idim].compile<AMREX_SPACEDIM+1>();
 
             lo_Function_parser[idim].define(lo_Function_expr[idim]);
+            lo_Function_parser[idim].setConstant("pi", amrex::Math::pi<amrex::Real>());
             lo_Function_parser[idim].registerVariables({AMREX_D_DECL("x", "y", "z"), "t"});
             lo_Function[idim] = lo_Function_parser[idim].compile<AMREX_SPACEDIM+1>();
 
             hi_Function_parser[idim].define(hi_Function_expr[idim]);
+            hi_Function_parser[idim].setConstant("pi", amrex::Math::pi<amrex::Real>());
             hi_Function_parser[idim].registerVariables({AMREX_D_DECL("x", "y", "z"), "t"});
             hi_Function[idim] = hi_Function_parser[idim].compile<AMREX_SPACEDIM+1>();
 
