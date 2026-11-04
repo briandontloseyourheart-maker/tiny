@@ -90,6 +90,7 @@ Final_Time = 200.0
 Fixed_TimeStep = 1
 dt = 0.005
 CFL = 0.9
+CFL_abort = 100 # CFL stop criteria
 
 # Material properties
 Re = 200.0
