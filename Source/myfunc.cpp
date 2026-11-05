@@ -583,8 +583,8 @@ void Boundary_Condition (amrex::MultiFab& f,
     GpuArray<Real,AMREX_SPACEDIM> dX      = geom.CellSizeArray();
 
     const auto& domain_box = geom.Domain();
-    const auto& domain_lo = domain_box.loVect();
-    const auto& domain_hi = domain_box.hiVect();
+    const auto& domain_lo = domain_box.smallEnd();
+    const auto& domain_hi = domain_box.bigEnd();
     BoundaryConditionData const BoundaryConditionData_f = BoundaryCondition_f.Data;
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
