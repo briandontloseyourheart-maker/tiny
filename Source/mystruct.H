@@ -7,26 +7,29 @@
 #include <AMReX_Random.H>
 #include <AMReX_Math.H>
 
-struct InitialCondition
+struct InitialConditionData
 {
-    amrex::Parser u_parser;
     amrex::ParserExecutor<AMREX_SPACEDIM> u;
     amrex::Real u_noise = 0.0;
 #if (AMREX_SPACEDIM > 1)
-    amrex::Parser v_parser;
     amrex::ParserExecutor<AMREX_SPACEDIM> v;
     amrex::Real v_noise = 0.0;
 #endif
 #if (AMREX_SPACEDIM > 2)
-    amrex::Parser w_parser;
     amrex::ParserExecutor<AMREX_SPACEDIM> w;
     amrex::Real w_noise = 0.0;
 #endif
-    amrex::Parser P_parser;
     amrex::ParserExecutor<AMREX_SPACEDIM> P;
     amrex::Real P_noise = 0.0;
 
     int noise_seed = 12345;
+};
+
+struct InitialCondition
+{
+    amrex::Parser AMREX_D_DECL(u_parser, v_parser, w_parser), P_parser;
+
+    InitialConditionData Data;
 
     void Initialize ()
     {
@@ -37,10 +40,10 @@ struct InitialCondition
         u_parser.define(u_expr);
         u_parser.setConstant("pi", amrex::Math::pi<amrex::Real>());
         u_parser.registerVariables({AMREX_D_DECL("x", "y", "z")});
-        u = u_parser.compile<AMREX_SPACEDIM>();
+        Data.u = u_parser.compile<AMREX_SPACEDIM>();
 
-        pp.query("u_noise", u_noise);
-        if (u_noise < 0.0){
+        pp.query("u_noise", Data.u_noise);
+        if (Data.u_noise < 0.0){
             amrex::Abort("IC.u_noise must be >= 0.0");
         }
 #if (AMREX_SPACEDIM > 1)
@@ -49,10 +52,10 @@ struct InitialCondition
         v_parser.define(v_expr);
         v_parser.setConstant("pi", amrex::Math::pi<amrex::Real>());
         v_parser.registerVariables({AMREX_D_DECL("x", "y", "z")});
-        v = v_parser.compile<AMREX_SPACEDIM>();
+        Data.v = v_parser.compile<AMREX_SPACEDIM>();
 
-        pp.query("v_noise", v_noise);
-        if (v_noise < 0.0){
+        pp.query("v_noise", Data.v_noise);
+        if (Data.v_noise < 0.0){
             amrex::Abort("IC.v_noise must be >= 0.0");
         }
 #endif
@@ -62,10 +65,10 @@ struct InitialCondition
         w_parser.define(w_expr);
         w_parser.setConstant("pi", amrex::Math::pi<amrex::Real>());
         w_parser.registerVariables({AMREX_D_DECL("x", "y", "z")});
-        w = w_parser.compile<AMREX_SPACEDIM>();
+        Data.w = w_parser.compile<AMREX_SPACEDIM>();
 
-        pp.query("w_noise", w_noise);
-        if (w_noise < 0.0){
+        pp.query("w_noise", Data.w_noise);
+        if (Data.w_noise < 0.0){
             amrex::Abort("IC.w_noise must be >= 0.0");
         }
 #endif
@@ -74,76 +77,31 @@ struct InitialCondition
         P_parser.define(P_expr);
         P_parser.setConstant("pi", amrex::Math::pi<amrex::Real>());
         P_parser.registerVariables({AMREX_D_DECL("x", "y", "z")});
-        P = P_parser.compile<AMREX_SPACEDIM>();
+        Data.P = P_parser.compile<AMREX_SPACEDIM>();
 
-        pp.query("P_noise", P_noise);
-        if (P_noise < 0.0){
+        pp.query("P_noise", Data.P_noise);
+        if (Data.P_noise < 0.0){
             amrex::Abort("IC.P_noise must be >= 0.0");
         }
 
-        pp.query("noise_seed", noise_seed);
-        if (noise_seed < 0){
+        pp.query("noise_seed", Data.noise_seed);
+        if (Data.noise_seed < 0){
             amrex::Abort("IC.noise_seed must be >= 0");
         }
         // Make the optional random perturbation reproducible while giving
         // different MPI ranks independent CPU/GPU random streams.
-        const amrex::ULong base_seed = static_cast<amrex::ULong>(noise_seed);
+        const amrex::ULong base_seed = static_cast<amrex::ULong>(Data.noise_seed);
         const amrex::ULong rank_seed = base_seed + 104729ULL*static_cast<amrex::ULong>(amrex::ParallelDescriptor::MyProc());
         amrex::ResetRandomSeed(rank_seed, rank_seed);
     }
 };
 
 
-struct ImmersedBoundary
+struct ImmersedBoundaryData
 {
-    amrex::Parser x_parser;
-    amrex::ParserExecutor<1> x;
-#if (AMREX_SPACEDIM > 1)
-    amrex::Parser y_parser;
-    amrex::ParserExecutor<1> y;
-#endif
-#if (AMREX_SPACEDIM > 2)
-    amrex::Parser z_parser;
-    amrex::ParserExecutor<1> z;
-#endif
+    amrex::ParserExecutor<1> AMREX_D_DECL(x, y, z);
     amrex::Real radius  = 0.5;
     amrex::Real epsilon = 0.01;
-
-    void Initialize ()
-    {
-        amrex::ParmParse pp("IB");
-
-        std::string x_expr = "0.0";
-        pp.query("x", x_expr);
-        x_parser.define(x_expr);
-        x_parser.setConstant("pi", amrex::Math::pi<amrex::Real>());
-        x_parser.registerVariables({"t"});
-        x = x_parser.compile<1>();
-#if (AMREX_SPACEDIM > 1)
-        std::string y_expr = "0.0";
-        pp.query("y", y_expr);
-        y_parser.define(y_expr);
-        y_parser.setConstant("pi", amrex::Math::pi<amrex::Real>());
-        y_parser.registerVariables({"t"});
-        y = y_parser.compile<1>();
-#endif
-#if (AMREX_SPACEDIM > 2)
-        std::string z_expr = "0.0";
-        pp.query("z", z_expr);
-        z_parser.define(z_expr);
-        z_parser.setConstant("pi", amrex::Math::pi<amrex::Real>());
-        z_parser.registerVariables({"t"});
-        z = z_parser.compile<1>();
-#endif
-        pp.query("radius", radius);
-        if (radius <= 0.0){
-            amrex::Abort("IB.radius must be > 0.0");
-        }
-        pp.query("epsilon", epsilon);
-        if (epsilon <= 0.0){
-            amrex::Abort("IB.epsilon must be > 0.0");
-        }
-    }
 
     AMREX_GPU_DEVICE AMREX_FORCE_INLINE
     amrex::Array<amrex::Real,AMREX_SPACEDIM> Velocity (amrex::Real const& time, amrex::Real const& dt) const
@@ -193,6 +151,48 @@ struct ImmersedBoundary
     }
 };
 
+struct ImmersedBoundary
+{
+    amrex::Parser AMREX_D_DECL(x_parser, y_parser, z_parser);
+    ImmersedBoundaryData Data;
+
+    void Initialize ()
+    {
+        amrex::ParmParse pp("IB");
+
+        std::string x_expr = "0.0";
+        pp.query("x", x_expr);
+        x_parser.define(x_expr);
+        x_parser.setConstant("pi", amrex::Math::pi<amrex::Real>());
+        x_parser.registerVariables({"t"});
+        Data.x = x_parser.compile<1>();
+#if (AMREX_SPACEDIM > 1)
+        std::string y_expr = "0.0";
+        pp.query("y", y_expr);
+        y_parser.define(y_expr);
+        y_parser.setConstant("pi", amrex::Math::pi<amrex::Real>());
+        y_parser.registerVariables({"t"});
+        Data.y = y_parser.compile<1>();
+#endif
+#if (AMREX_SPACEDIM > 2)
+        std::string z_expr = "0.0";
+        pp.query("z", z_expr);
+        z_parser.define(z_expr);
+        z_parser.setConstant("pi", amrex::Math::pi<amrex::Real>());
+        z_parser.registerVariables({"t"});
+        Data.z = z_parser.compile<1>();
+#endif
+        pp.query("radius", Data.radius);
+        if (Data.radius <= 0.0){
+            amrex::Abort("IB.radius must be > 0.0");
+        }
+        pp.query("epsilon", Data.epsilon);
+        if (Data.epsilon <= 0.0){
+            amrex::Abort("IB.epsilon must be > 0.0");
+        }
+    }
+};
+
 
 enum class BoundaryConditionType : int {
     Periodic,
@@ -202,25 +202,33 @@ enum class BoundaryConditionType : int {
     User
 };
 
-struct BoundaryCondition
+struct BoundaryConditionData
 {
     amrex::Array<BoundaryConditionType,AMREX_SPACEDIM> lo;
     amrex::Array<BoundaryConditionType,AMREX_SPACEDIM> hi;
 
-    amrex::Array<amrex::Parser,AMREX_SPACEDIM> lo_Dirichlet_parser;
-    amrex::Array<amrex::Parser,AMREX_SPACEDIM> hi_Dirichlet_parser;
     amrex::Array<amrex::ParserExecutor<AMREX_SPACEDIM+1>,AMREX_SPACEDIM> lo_Dirichlet;
     amrex::Array<amrex::ParserExecutor<AMREX_SPACEDIM+1>,AMREX_SPACEDIM> hi_Dirichlet;
 
-    amrex::Array<amrex::Parser,AMREX_SPACEDIM> lo_Neumann_parser;
-    amrex::Array<amrex::Parser,AMREX_SPACEDIM> hi_Neumann_parser;
     amrex::Array<amrex::ParserExecutor<AMREX_SPACEDIM+1>,AMREX_SPACEDIM> lo_Neumann;
     amrex::Array<amrex::ParserExecutor<AMREX_SPACEDIM+1>,AMREX_SPACEDIM> hi_Neumann;
 
-    amrex::Array<amrex::Parser,AMREX_SPACEDIM> lo_Function_parser;
-    amrex::Array<amrex::Parser,AMREX_SPACEDIM> hi_Function_parser;
     amrex::Array<amrex::ParserExecutor<AMREX_SPACEDIM+1>,AMREX_SPACEDIM> lo_Function;
     amrex::Array<amrex::ParserExecutor<AMREX_SPACEDIM+1>,AMREX_SPACEDIM> hi_Function;
+};
+
+struct BoundaryCondition
+{
+    amrex::Array<amrex::Parser,AMREX_SPACEDIM> lo_Dirichlet_parser;
+    amrex::Array<amrex::Parser,AMREX_SPACEDIM> hi_Dirichlet_parser;
+
+    amrex::Array<amrex::Parser,AMREX_SPACEDIM> lo_Neumann_parser;
+    amrex::Array<amrex::Parser,AMREX_SPACEDIM> hi_Neumann_parser;
+
+    amrex::Array<amrex::Parser,AMREX_SPACEDIM> lo_Function_parser;
+    amrex::Array<amrex::Parser,AMREX_SPACEDIM> hi_Function_parser;
+
+    BoundaryConditionData Data;
 
     void Initialize (std::string const& BC_Variable,
                      amrex::Array<int,AMREX_SPACEDIM> const& is_periodic)
@@ -246,56 +254,56 @@ struct BoundaryCondition
             lo_Dirichlet_parser[idim].define(lo_Dirichlet_expr[idim]);
             lo_Dirichlet_parser[idim].setConstant("pi", amrex::Math::pi<amrex::Real>());
             lo_Dirichlet_parser[idim].registerVariables({AMREX_D_DECL("x", "y", "z"), "t"});
-            lo_Dirichlet[idim] = lo_Dirichlet_parser[idim].compile<AMREX_SPACEDIM+1>();
+            Data.lo_Dirichlet[idim] = lo_Dirichlet_parser[idim].compile<AMREX_SPACEDIM+1>();
 
             hi_Dirichlet_parser[idim].define(hi_Dirichlet_expr[idim]);
             hi_Dirichlet_parser[idim].setConstant("pi", amrex::Math::pi<amrex::Real>());
             hi_Dirichlet_parser[idim].registerVariables({AMREX_D_DECL("x", "y", "z"), "t"});
-            hi_Dirichlet[idim] = hi_Dirichlet_parser[idim].compile<AMREX_SPACEDIM+1>();
+            Data.hi_Dirichlet[idim] = hi_Dirichlet_parser[idim].compile<AMREX_SPACEDIM+1>();
 
             lo_Neumann_parser[idim].define(lo_Neumann_expr[idim]);
             lo_Neumann_parser[idim].setConstant("pi", amrex::Math::pi<amrex::Real>());
             lo_Neumann_parser[idim].registerVariables({AMREX_D_DECL("x", "y", "z"), "t"});
-            lo_Neumann[idim] = lo_Neumann_parser[idim].compile<AMREX_SPACEDIM+1>();
+            Data.lo_Neumann[idim] = lo_Neumann_parser[idim].compile<AMREX_SPACEDIM+1>();
 
             hi_Neumann_parser[idim].define(hi_Neumann_expr[idim]);
             hi_Neumann_parser[idim].setConstant("pi", amrex::Math::pi<amrex::Real>());
             hi_Neumann_parser[idim].registerVariables({AMREX_D_DECL("x", "y", "z"), "t"});
-            hi_Neumann[idim] = hi_Neumann_parser[idim].compile<AMREX_SPACEDIM+1>();
+            Data.hi_Neumann[idim] = hi_Neumann_parser[idim].compile<AMREX_SPACEDIM+1>();
 
             lo_Function_parser[idim].define(lo_Function_expr[idim]);
             lo_Function_parser[idim].setConstant("pi", amrex::Math::pi<amrex::Real>());
             lo_Function_parser[idim].registerVariables({AMREX_D_DECL("x", "y", "z"), "t"});
-            lo_Function[idim] = lo_Function_parser[idim].compile<AMREX_SPACEDIM+1>();
+            Data.lo_Function[idim] = lo_Function_parser[idim].compile<AMREX_SPACEDIM+1>();
 
             hi_Function_parser[idim].define(hi_Function_expr[idim]);
             hi_Function_parser[idim].setConstant("pi", amrex::Math::pi<amrex::Real>());
             hi_Function_parser[idim].registerVariables({AMREX_D_DECL("x", "y", "z"), "t"});
-            hi_Function[idim] = hi_Function_parser[idim].compile<AMREX_SPACEDIM+1>();
+            Data.hi_Function[idim] = hi_Function_parser[idim].compile<AMREX_SPACEDIM+1>();
 
             if (is_periodic[idim] == 1){
-                lo[idim] = BoundaryConditionType::Periodic;
-                hi[idim] = BoundaryConditionType::Periodic;
+                Data.lo[idim] = BoundaryConditionType::Periodic;
+                Data.hi[idim] = BoundaryConditionType::Periodic;
             }
             else{
                 if (lo_Dirichlet_expr[idim] != "0.0" && lo_Neumann_expr[idim] == "0.0"){
-                    lo[idim] = BoundaryConditionType::Dirichlet;
+                    Data.lo[idim] = BoundaryConditionType::Dirichlet;
                 }
                 else if (lo_Dirichlet_expr[idim] == "0.0" && lo_Neumann_expr[idim] != "0.0"){
-                    lo[idim] = BoundaryConditionType::Neumann;
+                    Data.lo[idim] = BoundaryConditionType::Neumann;
                 }
                 else{
-                    lo[idim] = BoundaryConditionType::Robin;
+                    Data.lo[idim] = BoundaryConditionType::Robin;
                 }
 
                 if (hi_Dirichlet_expr[idim] != "0.0" && hi_Neumann_expr[idim] == "0.0"){
-                    hi[idim] = BoundaryConditionType::Dirichlet;
+                    Data.hi[idim] = BoundaryConditionType::Dirichlet;
                 }
                 else if (hi_Dirichlet_expr[idim] == "0.0" && hi_Neumann_expr[idim] != "0.0"){
-                    hi[idim] = BoundaryConditionType::Neumann;
+                    Data.hi[idim] = BoundaryConditionType::Neumann;
                 }
                 else{
-                    hi[idim] = BoundaryConditionType::Robin;
+                    Data.hi[idim] = BoundaryConditionType::Robin;
                 }
             }
         }

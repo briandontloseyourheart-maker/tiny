@@ -9,14 +9,14 @@ void Solid_Fraction (amrex::Real& Alpha_Solid,
                      amrex::Real const& y,
                      amrex::Real const& z),
                      amrex::Real const& time,
-                     ImmersedBoundary const& immersed_boundary)
+                     ImmersedBoundaryData const& immersed_boundary_data)
 {
     AMREX_D_TERM(
-    amrex::Real xr = immersed_boundary.x(time);,
-    amrex::Real yr = immersed_boundary.y(time);,
-    amrex::Real zr = immersed_boundary.z(time));
-    amrex::Real rr = immersed_boundary.radius;
-    amrex::Real epsilon = immersed_boundary.epsilon;
+    amrex::Real xr = immersed_boundary_data.x(time);,
+    amrex::Real yr = immersed_boundary_data.y(time);,
+    amrex::Real zr = immersed_boundary_data.z(time));
+    amrex::Real rr = immersed_boundary_data.radius;
+    amrex::Real epsilon = immersed_boundary_data.epsilon;
     amrex::Real psi = rr - std::sqrt(AMREX_D_TERM((x-xr)*(x-xr), + (y-yr)*(y-yr), + (z-zr)*(z-zr)));
     Alpha_Solid = 0.5*(1.0 + std::tanh(psi/epsilon));
 }
@@ -27,10 +27,10 @@ void Solid_Velocity (amrex::Array<amrex::Real,AMREX_SPACEDIM>& Velocity_Solid,
                      amrex::Real const& y,
                      amrex::Real const& z),
                      amrex::Real const& time,
-                     ImmersedBoundary const& immersed_boundary)
+                     ImmersedBoundaryData const& immersed_boundary_data)
 {
     amrex::Real dt = 1.0e-6*std::max(time, 1.0);
-    Velocity_Solid = immersed_boundary.Velocity(time, dt);
+    Velocity_Solid = immersed_boundary_data.Velocity(time, dt);
 }
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
@@ -51,12 +51,12 @@ void Initial_Condition (AMREX_D_DECL(
                         amrex::Real const& x,
                         amrex::Real const& y,
                         amrex::Real const& z),
-                        InitialCondition const& initial_condition)
+                        InitialConditionData const& initial_condition_data)
 {
     AMREX_D_TERM(
-    u = initial_condition.u(AMREX_D_DECL(x, y, z));,
-    v = initial_condition.v(AMREX_D_DECL(x, y, z));,
-    w = initial_condition.w(AMREX_D_DECL(x, y, z)));
-    P = initial_condition.P(AMREX_D_DECL(x, y, z));
+    u = initial_condition_data.u(AMREX_D_DECL(x, y, z));,
+    v = initial_condition_data.v(AMREX_D_DECL(x, y, z));,
+    w = initial_condition_data.w(AMREX_D_DECL(x, y, z)));
+    P = initial_condition_data.P(AMREX_D_DECL(x, y, z));
 }
 #endif
