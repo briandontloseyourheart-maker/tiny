@@ -12,7 +12,7 @@ void Initial_Condition (int i, int j, int k,
                         amrex::Array4<amrex::Real> const& PArray,
                         amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dX,
                         amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& prob_lo,
-                        InitialCondition const& initial_condition,
+                        InitialConditionData const& initial_condition_data,
                         amrex::RandomEngine const& random_engine)
 {
     AMREX_D_TERM(amrex::Real x = prob_lo[0] + (amrex::Real(i) + 0.5) * dX[0];,
@@ -22,16 +22,16 @@ void Initial_Condition (int i, int j, int k,
     amrex::Real AMREX_D_DECL(u, v, w), P;
     Initial_Condition(AMREX_D_DECL(u, v, w), P,
                       AMREX_D_DECL(x, y, z),
-                      initial_condition);
+                      initial_condition_data);
 
-    amrex::Real u_Random = amrex::RandomNormal(0.0, initial_condition.u_noise, random_engine);
+    amrex::Real u_Random = amrex::RandomNormal(0.0, initial_condition_data.u_noise, random_engine);
 #if (AMREX_SPACEDIM > 1)
-    amrex::Real v_Random = amrex::RandomNormal(0.0, initial_condition.v_noise, random_engine);
+    amrex::Real v_Random = amrex::RandomNormal(0.0, initial_condition_data.v_noise, random_engine);
 #endif
 #if (AMREX_SPACEDIM > 2)
-    amrex::Real w_Random = amrex::RandomNormal(0.0, initial_condition.w_noise, random_engine);
+    amrex::Real w_Random = amrex::RandomNormal(0.0, initial_condition_data.w_noise, random_engine);
 #endif
-    amrex::Real P_Random = amrex::RandomNormal(0.0, initial_condition.P_noise, random_engine);
+    amrex::Real P_Random = amrex::RandomNormal(0.0, initial_condition_data.P_noise, random_engine);
 
     AMREX_D_TERM(
     uArray(i,j,k) = u + u_Random;,
@@ -553,7 +553,7 @@ void Velocity_Update (int i, int j, int k,
                       amrex::Real const& z),
                       amrex::Real const& time,
                       amrex::Real const& nu,
-                      ImmersedBoundary const& immersed_boundary,
+                      ImmersedBoundaryData const& immersed_boundary_data,
                       int ID_VelocityCenter,
                       int ID_Dimension)
 {
@@ -580,12 +580,12 @@ void Velocity_Update (int i, int j, int k,
     amrex::Real Alpha_Solid;
     Solid_Fraction(Alpha_Solid,
       AMREX_D_DECL(x, y, z), time+dt,
-                   immersed_boundary);
+                   immersed_boundary_data);
 
     amrex::Array<amrex::Real,AMREX_SPACEDIM> Vel_Solid;
     Solid_Velocity(Vel_Solid,
       AMREX_D_DECL(x, y, z), time+dt,
-                   immersed_boundary);
+                   immersed_boundary_data);
 
     amrex::Real Cd;
     Drag_Coefficient(Cd,
