@@ -1,0 +1,168 @@
+# Domain
+lo_x = -10.0
+hi_x = 20.0
+
+lo_y =  -10.0
+hi_y =  10.0
+
+lo_z =  0.0
+hi_z =  3.0
+
+#Space discretization
+n_cell_x = 912
+n_cell_y = 608
+n_cell_z = 48
+
+max_grid_size = 16
+
+# Boundary condition
+is_periodic    =  0    0    1
+
+# Lid-driven cavity
+# BC_u.lo_Dirichlet =  "1.0"  "1.0"  "0.0"
+# BC_u.lo_Neumann   =  "0.0"  "0.0"  "0.0"
+# BC_u.lo_Function  =  "0.0"  "0.0"  "0.0"
+
+# BC_u.hi_Dirichlet =  "1.0"  "1.0"  "0.0"
+# BC_u.hi_Neumann   =  "0.0"  "0.0"  "0.0"
+# BC_u.hi_Function  =  "0.0"  "1.0"  "0.0"
+
+# BC_v.lo_Dirichlet =  "1.0"  "1.0"  "0.0"
+# BC_v.lo_Neumann   =  "0.0"  "0.0"  "0.0"
+# BC_v.lo_Function  =  "0.0"  "0.0"  "0.0"
+
+# BC_v.hi_Dirichlet =  "1.0"  "1.0"  "0.0"
+# BC_v.hi_Neumann   =  "0.0"  "0.0"  "0.0"
+# BC_v.hi_Function  =  "0.0"  "0.0"  "0.0"
+
+# BC_w.lo_Dirichlet =  "1.0"  "1.0"  "0.0"
+# BC_w.lo_Neumann   =  "0.0"  "0.0"  "0.0"
+# BC_w.lo_Function  =  "0.0"  "0.0"  "0.0"
+
+# BC_w.hi_Dirichlet =  "0.0"  "1.0"  "0.0"
+# BC_w.hi_Neumann   =  "1.0"  "0.0"  "0.0"
+# BC_w.hi_Function  =  "0.0"  "0.0"  "0.0"
+
+# BC_P.lo_Dirichlet =  "0.0"  "0.0"  "0.0"
+# BC_P.lo_Neumann   =  "1.0"  "1.0"  "0.0"
+# BC_P.lo_Function  =  "0.0"  "0.0"  "0.0"
+
+# BC_P.hi_Dirichlet =  "0.0"  "0.0"  "0.0"
+# BC_P.hi_Neumann   =  "1.0"  "1.0"  "0.0"
+# BC_P.hi_Function  =  "0.0"  "0.0"  "0.0"
+
+# Channel flow
+BC_u.lo_Dirichlet =  "1.0"  "0.0"  "0.0"
+BC_u.lo_Neumann   =  "0.0"  "1.0"  "0.0"
+BC_u.lo_Function  =  "1.0"  "0.0"  "0.0"
+
+BC_u.hi_Dirichlet =  "0.0"  "0.0"  "0.0"
+BC_u.hi_Neumann   =  "1.0"  "1.0"  "0.0"
+BC_u.hi_Function  =  "0.0"  "0.0"  "0.0"
+
+BC_v.lo_Dirichlet =  "1.0"  "1.0"  "0.0"
+BC_v.lo_Neumann   =  "0.0"  "0.0"  "0.0"
+BC_v.lo_Function  =  "0.0"  "0.0"  "0.0"
+
+BC_v.hi_Dirichlet =  "0.0"  "1.0"  "0.0"
+BC_v.hi_Neumann   =  "1.0"  "0.0"  "0.0"
+BC_v.hi_Function  =  "0.0"  "0.0"  "0.0"
+
+BC_w.lo_Dirichlet =  "1.0"  "0.0"  "0.0"
+BC_w.lo_Neumann   =  "0.0"  "1.0"  "0.0"
+BC_w.lo_Function  =  "0.0"  "0.0"  "0.0"
+
+BC_w.hi_Dirichlet =  "0.0"  "0.0"  "0.0"
+BC_w.hi_Neumann   =  "1.0"  "1.0"  "0.0"
+BC_w.hi_Function  =  "0.0"  "0.0"  "0.0"
+
+BC_P.lo_Dirichlet =  "0.0"  "0.0"  "0.0"
+BC_P.lo_Neumann   =  "1.0"  "1.0"  "0.0"
+BC_P.lo_Function  =  "0.0"  "0.0"  "0.0"
+
+BC_P.hi_Dirichlet =  "1.0"  "0.0"  "0.0"
+BC_P.hi_Neumann   =  "0.0"  "1.0"  "0.0"
+BC_P.hi_Function  =  "0.0"  "0.0"  "0.0"
+
+
+# Time discretization
+Final_Time = 200.0
+Fixed_TimeStep = 1
+dt = 0.005
+CFL = 0.9
+CFL_abort = 100 # CFL stop criteria
+
+# Material properties
+Re = 200.0
+
+# Pressure poisson
+tol_rel = 1.0e-10
+max_iter = 100
+max_fmg_iter = 0
+verbose = 0
+bottom_verbose = 0
+
+# ============================================================
+# Initial conditions
+# Each field can be a constant or an AMReX Parser expression.
+# Available variables: x, y, z, t.  For initial conditions t = 0.
+# Constant pi is also available. # Examples
+# IC.u = "1.0+0.05*sin(2*pi*y)" 
+# IC.v = "0.02*cos(pi*x)*sin(pi*y)"
+# IC.P = "0.5*x"
+# IC.u_noise = 0.001
+# ============================================================
+
+IC.u = "1.0"  
+IC.v = "0.0"	
+IC.w = "0.0"
+IC.P = "0.0"	
+
+# Additive white Gaussian noise: standard deviation sigma.
+# Set to 0.0 to disable noise for that field.
+
+IC.u_noise = 0.001
+IC.v_noise = 0.001
+IC.w_noise = 0.001
+IC.P_noise = 0.001
+IC.noise_seed = 12345
+
+
+# ============================================================
+# IBM geometry and prescribed centre motion
+# x0(t), y0(t), z0(t) are arbitrary AMReX Parser expressions.
+# Available variable: t.  Constant pi is available.
+# Current geometry is a circular cylinder aligned with z.
+# Examples of prescribed vibration:
+# IB.x = "0.1*cos(2*pi*0.2*t)"
+# IB.y = "0.2*sin(2*pi*0.2*t)"
+# ============================================================
+
+IB.x = "0.0"
+IB.y = "0.0"
+IB.z = "0.0"
+
+IB.radius  = 0.5
+IB.epsilon = 0.01
+
+
+
+# IO controls 
+# Output control
+nsteps = 500
+plot_int = 50
+plotForce_int = 1
+
+# Checkpoint control
+chk_int = 100
+restart = -1
+
+
+# Screen print control 
+IO_InfoSteps = 200;
+IO_CFLSteps  = 10;
+
+
+
+amrex.v = 1
+amrex.async_out = 0  # If we use more than 64 processes, async_out will require MPI_THREAD_MULTIPLE

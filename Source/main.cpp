@@ -3,6 +3,7 @@
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_ParmParse.H>
 #include <AMReX_Print.H>
+#include <filesystem>
 
 #include "myfunc.H"
 
@@ -31,9 +32,9 @@ void main_main ()
     int max_grid_size;
 
     Array<int,AMREX_SPACEDIM> is_periodic;
-    BoundaryCondition AMREX_D_DECL(BoundaryCondition_u, BoundaryCondition_v, BoundaryCondition_w), BoundaryCondition_P;
 
     Real Final_Time, dt, CFL;
+    Real CFL_abort;
     int Fixed_TimeStep;
 
     Real Re, nu;
@@ -43,11 +44,17 @@ void main_main ()
 
     int nsteps, plot_int, plotForce_int;
 
+    // IO_InfoSteps: interval for Steps/Time/CPU Time information
+    // IO_CFLSteps : interval for an additional CFL summary
+    int IO_InfoSteps;
+    int IO_CFLSteps;
+
     // how often to write a checkpoint file
     int chk_int;
 
     // restart = -1 --> start new simulation
     // restart >  0 --> restart from step=restart
+	
     int restart;
 
     // inputs parameters
@@ -55,7 +62,6 @@ void main_main ()
         // ParmParse is way of reading inputs from the inputs file
         ParmParse pp;
         Vector<int> Vector_Int(AMREX_SPACEDIM);
-        Vector<Real> Vector_Real(AMREX_SPACEDIM);
 
         AMREX_D_TERM(
         pp.get("lo_x",lo_x);,
@@ -80,111 +86,6 @@ void main_main ()
             is_periodic[idim] = Vector_Int[idim];
         }
 
-        pp.getarr("lo_Dirichlet_u",Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_u.lo_Dirichlet[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Dirichlet_u",Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_u.hi_Dirichlet[idim] = Vector_Real[idim];
-        }
-        pp.getarr("lo_Neumann_u"  ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_u.lo_Neumann[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Neumann_u"  ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_u.hi_Neumann[idim] = Vector_Real[idim];
-        }
-        pp.getarr("lo_Function_u" ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_u.lo_Function[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Function_u" ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_u.hi_Function[idim] = Vector_Real[idim];
-        }
-        BoundaryCondition_u.Initialize(is_periodic);
-#if (AMREX_SPACEDIM > 1)
-        pp.getarr("lo_Dirichlet_v",Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_v.lo_Dirichlet[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Dirichlet_v",Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_v.hi_Dirichlet[idim] = Vector_Real[idim];
-        }
-        pp.getarr("lo_Neumann_v"  ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_v.lo_Neumann[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Neumann_v"  ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_v.hi_Neumann[idim] = Vector_Real[idim];
-        }
-        pp.getarr("lo_Function_v" ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_v.lo_Function[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Function_v" ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_v.hi_Function[idim] = Vector_Real[idim];
-        }
-        BoundaryCondition_v.Initialize(is_periodic);
-#endif
-#if (AMREX_SPACEDIM > 2)
-        pp.getarr("lo_Dirichlet_w",Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_w.lo_Dirichlet[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Dirichlet_w",Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_w.hi_Dirichlet[idim] = Vector_Real[idim];
-        }
-        pp.getarr("lo_Neumann_w"  ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_w.lo_Neumann[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Neumann_w"  ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_w.hi_Neumann[idim] = Vector_Real[idim];
-        }
-        pp.getarr("lo_Function_w" ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_w.lo_Function[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Function_w" ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_w.hi_Function[idim] = Vector_Real[idim];
-        }
-        BoundaryCondition_w.Initialize(is_periodic);
-#endif
-        pp.getarr("lo_Dirichlet_P",Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_P.lo_Dirichlet[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Dirichlet_P",Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_P.hi_Dirichlet[idim] = Vector_Real[idim];
-        }
-        pp.getarr("lo_Neumann_P"  ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_P.lo_Neumann[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Neumann_P"  ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_P.hi_Neumann[idim] = Vector_Real[idim];
-        }
-        pp.getarr("lo_Function_P" ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_P.lo_Function[idim] = Vector_Real[idim];
-        }
-        pp.getarr("hi_Function_P" ,Vector_Real);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            BoundaryCondition_P.hi_Function[idim] = Vector_Real[idim];
-        }
-        BoundaryCondition_P.Initialize(is_periodic);
-
         pp.get("Final_Time",Final_Time);
         pp.get("Fixed_TimeStep",Fixed_TimeStep);
         if (Fixed_TimeStep){
@@ -193,6 +94,10 @@ void main_main ()
         else{
             pp.get("CFL",CFL);
         }
+
+        // CFL abort limit
+		CFL_abort = 100.0;
+		pp.query("CFL_abort", CFL_abort);
 
         pp.get("Re",Re);
         nu = 1.0/Re;
@@ -220,6 +125,13 @@ void main_main ()
         plotForce_int = -1;
         pp.query("plotForce_int",plotForce_int);
 
+        // screen-output controls.
+        // Set <= 0 to disable the corresponding periodic output.
+        IO_InfoSteps = 200;
+        IO_CFLSteps  = 100;
+        pp.query("IO_InfoSteps", IO_InfoSteps);
+        pp.query("IO_CFLSteps",  IO_CFLSteps);
+
         // Default chk_int to -1, allow us to set it to something else in the inputs file
         //  If chk_int < 0 then no chk files will be written
         chk_int = -1;
@@ -234,6 +146,25 @@ void main_main ()
         nsteps = 10;
         pp.query("nsteps",nsteps);
     }
+
+    InitialCondition initial_condition;
+    initial_condition.Initialize();
+
+    BoundaryCondition BoundaryCondition_u;
+    BoundaryCondition_u.Initialize("BC_u", is_periodic);
+#if (AMREX_SPACEDIM > 1)
+    BoundaryCondition BoundaryCondition_v;
+    BoundaryCondition_v.Initialize("BC_v", is_periodic);
+#endif
+#if (AMREX_SPACEDIM > 2)
+    BoundaryCondition BoundaryCondition_w;
+    BoundaryCondition_w.Initialize("BC_w", is_periodic);
+#endif
+    BoundaryCondition BoundaryCondition_P;
+    BoundaryCondition_P.Initialize("BC_P", is_periodic);
+
+    ImmersedBoundary immersed_boundary;
+    immersed_boundary.Initialize();
 
     // make Geometry
     Geometry geom;
@@ -256,8 +187,6 @@ void main_main ()
     DistributionMapping dm;
 
     // we allocate two phi multifabs; one will store the old state, the other the new.
-// 新增：可压缩守恒变量
-    MultiFab U_old, U_new;
     MultiFab u_old, u_new;
 #if (AMREX_SPACEDIM > 1)
     MultiFab v_old, v_new;
@@ -282,9 +211,6 @@ void main_main ()
 
         // How Boxes are distrubuted among MPI processes
         dm.define(ba);
-        // 新增：四个守恒分量，两层 ghost cell
-        U_old.define(ba, dm, NCONS, 2);
-        U_new.define(ba, dm, NCONS, 2);
 
         u_old.define(ba, dm, 1, Nghost);
         u_new.define(ba, dm, 1, Nghost);
@@ -317,7 +243,8 @@ void main_main ()
                           w_new, BoundaryCondition_w,
 #endif
                           P_new, Vel_new,
-                          geom);
+                          geom,
+                          initial_condition);
 
         // Write a plotfile of the initial data if plot_int > 0 (plot_int was defined in the inputs file)
         if (plot_int > 0)
@@ -332,13 +259,18 @@ void main_main ()
             int n = 0;
             const std::string& pltfile = amrex::Concatenate("./plot/plt",n,5);
             WriteSingleLevelPlotfile(pltfile, Output, {AMREX_D_DECL("u", "v", "w"), "P"}, geom, time, 0);
+#if (USE_HDF5)
+            std::filesystem::create_directories("./plot_HDF5");
+			const std::string& pltfile_HDF5 = amrex::Concatenate("./plot_HDF5/plt",n,5);
+			WriteSingleLevelPlotfileHDF5(pltfile_HDF5, Output, {AMREX_D_DECL("u", "v", "w"), "P"}, geom, time, 0, "None@0");
+#endif
         }
         if (plotForce_int > 0)
         {
             // ---------------------------
             // File I/O setup
             // ---------------------------
-            const std::string fname = "./plot/Force_Hydrodynamic.csv";
+            const std::string fname = "./Force_Hydrodynamic.csv";
 
             std::fstream file;
             file.open(fname, std::ofstream::out | std::ofstream::trunc);
@@ -401,6 +333,107 @@ void main_main ()
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Print a run summary
+    // -------------------------------------------------------------------------
+    amrex::Print() << "============================================================\n"
+                   << "        Equation Type: Incompressible Navier-Stokes FSI\n"
+                   << "         Spatial Dim.: " << AMREX_SPACEDIM << "\n"
+                   << "      Num. Processes: " << ParallelDescriptor::NProcs() << "\n"
+                   << "        No. of Steps: " << nsteps << "\n"
+                   << " Checkpoints (steps): ";
+    if (chk_int > 0) {
+        amrex::Print() << chk_int << "\n";
+    } else {
+        amrex::Print() << "Disabled\n";
+    }
+    amrex::Print() << "      IO InfoSteps: ";
+    if (IO_InfoSteps > 0) {
+        amrex::Print() << IO_InfoSteps << "\n";
+    } else {
+        amrex::Print() << "Disabled\n";
+    }
+    amrex::Print() << "       IO CFLSteps: ";
+    if (IO_CFLSteps > 0) {
+        amrex::Print() << IO_CFLSteps << "\n";
+    } else {
+        amrex::Print() << "Disabled\n";
+    }
+    amrex::Print() << "          CFL Abort: " << CFL_abort << "\n";
+    if (restart <= 0) {
+        amrex::Print() << "Initial Conditions:\n"
+                       << "  - u(x,y,z): " << initial_condition.u_parser.expr();
+        if (initial_condition.Data.u_noise > 0.0){
+            amrex::Print() << " + Gaussian noise (sigma=" << initial_condition.Data.u_noise << ")";
+        }
+        amrex::Print() << "\n";
+#if (AMREX_SPACEDIM > 1)
+        amrex::Print() << "  - v(x,y,z): " << initial_condition.v_parser.expr();
+        if (initial_condition.Data.v_noise > 0.0){
+            amrex::Print() << " + Gaussian noise (sigma=" << initial_condition.Data.v_noise << ")";
+        }
+        amrex::Print() << "\n";
+#endif
+#if (AMREX_SPACEDIM > 2)
+        amrex::Print() << "  - w(x,y,z): " << initial_condition.w_parser.expr();
+        if (initial_condition.Data.w_noise > 0.0){
+            amrex::Print() << " + Gaussian noise (sigma=" << initial_condition.Data.w_noise << ")";
+        }
+        amrex::Print() << "\n";
+#endif
+        amrex::Print() << "  - P(x,y,z): " << initial_condition.P_parser.expr();
+        if (initial_condition.Data.P_noise > 0.0){
+            amrex::Print() << " + Gaussian noise (sigma=" << initial_condition.Data.P_noise << ")";
+        }
+        amrex::Print() << "\n";
+
+        if (AMREX_D_TERM(initial_condition.Data.u_noise > 0.0, || initial_condition.Data.v_noise > 0.0, || initial_condition.Data.w_noise > 0.0) || initial_condition.Data.P_noise > 0.0){
+            amrex::Print() << "  - Noise seed: " << initial_condition.Data.noise_seed << "\n";
+        }
+    }
+    else{
+        amrex::Print() << "Initial Conditions:\n"
+                       << "  - Restart from checkpoint: "
+                       << amrex::Concatenate("chk", restart, 5) << "\n"
+                       << "  - Restart time: " << time << "\n";
+    }
+    amrex::Print() << "IBM Geometry / Prescribed Motion:\n"
+                   << "  - x_Center(t): " << immersed_boundary.x_parser.expr() << "\n"
+#if (AMREX_SPACEDIM > 1)
+                   << "  - y_Center(t): " << immersed_boundary.y_parser.expr() << "\n"
+#endif
+#if (AMREX_SPACEDIM > 2)
+                   << "  - z_Center(t): " << immersed_boundary.z_parser.expr() << "\n"
+#endif
+                   << "  - Centre at t=0: ("
+                   << immersed_boundary.Data.x(0.0)
+#if (AMREX_SPACEDIM > 1)
+                   << ", " << immersed_boundary.Data.y(0.0)
+#endif
+#if (AMREX_SPACEDIM > 2)
+                   << ", " << immersed_boundary.Data.z(0.0)
+#endif
+                   << ")\n"
+                   << "  - Radius: " << immersed_boundary.Data.radius << "\n"
+                   << "  - Epsilon: " << immersed_boundary.Data.epsilon << "\n"
+#if (AMREX_SPACEDIM == 1)
+                   << "  - Solid velocity: d(x_Center)/dt "
+#endif
+#if (AMREX_SPACEDIM == 2)
+                   << "  - Solid velocity: d(x_Center, y_Center)/dt "
+#endif
+#if (AMREX_SPACEDIM == 3)
+                   << "  - Solid velocity: d(x_Center, y_Center, z_Center)/dt "
+#endif
+                   << "(centred difference)\n";
+
+    amrex::Print() << "============================================================\n";
+
+    // Timer used for Nektar++-style interval timing.  ParallelDescriptor::second()
+    // measures wall-clock time; the reported value below is the maximum over MPI ranks.
+    auto screen_time_start = ParallelDescriptor::second();
+    const int IOProc = ParallelDescriptor::IOProcessorNumber();
+
     // Time advancement
     for (int n = start_step; n <= nsteps && time < Final_Time; ++n)
     {
@@ -414,6 +447,30 @@ void main_main ()
         if (time + dt > Final_Time){
             dt = Final_Time - time;
         }
+        GpuArray<Real,AMREX_SPACEDIM> dX = geom.CellSizeArray();
+        Real CFL_Adv = dt*std::max({AMREX_D_DECL(Vel_new[0].norminf()/dX[0], Vel_new[1].norminf()/dX[1], Vel_new[2].norminf()/dX[2])});
+        Real CFL_Dif = nu*dt*(AMREX_D_TERM(2.0/dX[0]/dX[0], + 2.0/dX[1]/dX[1], + 2.0/dX[2]/dX[2]));
+        // ============================================================
+        // Abort simulation if CFL becomes too large or invalid
+        // ============================================================
+		if (!std::isfinite(CFL_Adv) ||
+			!std::isfinite(CFL_Dif) ||
+			CFL_Adv > CFL_abort ||
+			CFL_Dif > CFL_abort)
+		{
+			amrex::Print()
+			<< "\n============================================================\n"
+			<< "Simulation terminated: CFL exceeded stability limit.\n"
+			<< "Step      = " << n << "\n"
+			<< "Time      = " << time << "\n"
+			<< "dt        = " << dt << "\n"
+			<< "CFL_Adv   = " << CFL_Adv << "\n"
+			<< "CFL_Dif   = " << CFL_Dif << "\n"
+			<< "CFL_abort = " << CFL_abort  << "\n"
+			<< "============================================================\n";
+
+			break;
+		}
 
         AMREX_D_TERM(
         MultiFab::Copy(u_old, u_new, 0, 0, 1, 0);,
@@ -436,11 +493,27 @@ void main_main ()
                 Vel_old, Vel_new, Force_Hydrodynamic,
                 geom, dt, time,
                 nu,
+                immersed_boundary,
                 tol_rel, max_iter, max_fmg_iter, verbose, bottom_verbose);
         time = time + dt;
 
-        // Tell the I/O Processor to write out which step we're doing
-        amrex::Print() << "Advanced step " << n <<" at Time = "<< time <<" with dt = "<< dt << "\n";
+        // The per-step progress output.
+        // amrex::Print() << "Advanced step " << n
+        //               << " at Time = " << time
+        //               << " with dt = " << dt
+        //               << " CFL_Adv = " << CFL_Adv
+        //               << " CFL_Dif = " << CFL_Dif << "\n";
+
+        // CFL summary per IO_CFLSteps.
+     
+        if (IO_CFLSteps > 0 && n % IO_CFLSteps == 0)
+        {
+            amrex::Print() << "Advanced step " << n
+                           << " at Time = " << time
+                           << " with dt = " << dt
+                           << " CFL_Adv = " << CFL_Adv
+                           << " CFL_Dif = " << CFL_Dif << "\n";
+        }
 
         // Write a plotfile of the current data (plot_int was defined in the inputs file)
         if (plot_int > 0 && n%plot_int == 0)
@@ -454,16 +527,33 @@ void main_main ()
 
             const std::string& pltfile = amrex::Concatenate("./plot/plt",n,5);
             WriteSingleLevelPlotfile(pltfile, Output, {AMREX_D_DECL("u", "v", "w"), "P"}, geom, time, n);
+#if (USE_HDF5)
+			std::filesystem::create_directories("./plot_HDF5");
+            const std::string& pltfile_HDF5 = amrex::Concatenate("./plot_HDF5/plt",n,5);
+			WriteSingleLevelPlotfileHDF5(pltfile_HDF5, Output, {AMREX_D_DECL("u", "v", "w"), "P"}, geom, time, n, "None@0");
+#endif
         }
         if (plotForce_int > 0 && n%plotForce_int == 0)
         {
             // ---------------------------
             // File I/O setup
             // ---------------------------
-            const std::string fname = "./plot/Force_Hydrodynamic.csv";
-
             std::fstream file;
-            file.open(fname, std::ios::app);
+			if (restart <= 0){
+				const std::string fname = "./Force_Hydrodynamic.csv";
+				file.open(fname, std::ios::app);
+			}
+			else{
+				std::filesystem::create_directories("./");
+				const std::string& checkpointname = Concatenate("chk",restart,5);
+				const std::string fname = "./Force_Hydrodynamic_" + checkpointname + ".csv";
+				if (n == restart + 1){
+					file.open(fname, std::ofstream::out | std::ofstream::trunc);
+				}
+				else{
+					file.open(fname, std::ios::app);
+				}
+			}
             file.precision(18);
 
             // ---------------------------
@@ -502,12 +592,25 @@ void main_main ()
 #endif
                             P_new, Vel_new);
         }
+
+        // Periodically report elapsed wall-clock time for the last IO_InfoSteps steps.
+        if (IO_InfoSteps > 0 && n % IO_InfoSteps == 0)
+        {
+            Real interval_cpu_time = ParallelDescriptor::second() - screen_time_start;
+            ParallelDescriptor::ReduceRealMax(interval_cpu_time, IOProc);
+
+            amrex::Print() << "Steps: " << n
+                           << "    Time: " << time
+                           << "    CPU Time: " << interval_cpu_time << " s\n";
+
+            // Start timing the next IO_InfoSteps-step block.
+            screen_time_start = ParallelDescriptor::second();
+        }
     }
 
     // Call the timer again and compute the maximum difference between the start time and stop time
     //   over all processors
     auto stop_time = ParallelDescriptor::second() - strt_time;
-    const int IOProc = ParallelDescriptor::IOProcessorNumber();
     ParallelDescriptor::ReduceRealMax(stop_time,IOProc);
 
     // Tell the I/O Processor to write out the "run time"

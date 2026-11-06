@@ -22,6 +22,7 @@ void advance (MultiFab& u_old, MultiFab& u_new, BoundaryCondition const& Boundar
               Real const& dt,
               Real const& time,
               Real const& nu,
+              ImmersedBoundary const& immersed_boundary,
               Real const& tol_rel,
               int max_iter,
               int max_fmg_iter,
@@ -39,14 +40,16 @@ void advance (MultiFab& u_old, MultiFab& u_new, BoundaryCondition const& Boundar
     const Array<const Real,AMREX_SPACEDIM> prob_lo = {AMREX_D_DECL(xlo, ylo, zlo)};
 
     // Velocity update
-    Boundary_Condition(u_old, BoundaryCondition_u, geom);
+    Boundary_Condition(u_old, BoundaryCondition_u, geom, time);
 #if (AMREX_SPACEDIM > 1)
-    Boundary_Condition(v_old, BoundaryCondition_v, geom);
+    Boundary_Condition(v_old, BoundaryCondition_v, geom, time);
 #endif
 #if (AMREX_SPACEDIM > 2)
-    Boundary_Condition(w_old, BoundaryCondition_w, geom);
+    Boundary_Condition(w_old, BoundaryCondition_w, geom, time);
 #endif
-    Boundary_Condition(P_old, BoundaryCondition_P, geom);
+    Boundary_Condition(P_old, BoundaryCondition_P, geom, time);
+
+    ImmersedBoundaryData const immersed_boundary_data = immersed_boundary.Data;
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
@@ -84,6 +87,7 @@ void advance (MultiFab& u_old, MultiFab& u_new, BoundaryCondition const& Boundar
                AMREX_D_DECL(dx, dy, dz), dt,
                AMREX_D_DECL( x,  y,  z), time,
                             nu,
+                            immersed_boundary_data,
                             ID_VelocityCenter,
                             ID_Dimension);
 #if (AMREX_SPACEDIM > 1)
@@ -95,6 +99,7 @@ void advance (MultiFab& u_old, MultiFab& u_new, BoundaryCondition const& Boundar
                AMREX_D_DECL(dx, dy, dz), dt,
                AMREX_D_DECL( x,  y,  z), time,
                             nu,
+                            immersed_boundary_data,
                             ID_VelocityCenter,
                             ID_Dimension);
 #endif
@@ -107,6 +112,7 @@ void advance (MultiFab& u_old, MultiFab& u_new, BoundaryCondition const& Boundar
                AMREX_D_DECL(dx, dy, dz), dt,
                AMREX_D_DECL( x,  y,  z), time,
                             nu,
+                            immersed_boundary_data,
                             ID_VelocityCenter,
                             ID_Dimension);
 #endif
@@ -139,11 +145,13 @@ void advance (MultiFab& u_old, MultiFab& u_new, BoundaryCondition const& Boundar
 
             Real Alpha_Solid;
             Solid_Fraction(Alpha_Solid,
-              AMREX_D_DECL(x, y, z), time+dt);
+              AMREX_D_DECL(x, y, z), time+dt,
+                           immersed_boundary_data);
 
             Array<Real,AMREX_SPACEDIM> Vel_Solid;
             Solid_Velocity(Vel_Solid,
-              AMREX_D_DECL(x, y, z), time+dt);
+              AMREX_D_DECL(x, y, z), time+dt,
+                           immersed_boundary_data);
 
             Real Cd;
             Drag_Coefficient(Cd,
@@ -216,14 +224,14 @@ void advance (MultiFab& u_old, MultiFab& u_new, BoundaryCondition const& Boundar
 
     // Compute Div_Vel
     MultiFab::Copy(u_old, u_new, 0, 0, 1, 0);
-    Boundary_Condition(u_old, BoundaryCondition_u, geom);
+    Boundary_Condition(u_old, BoundaryCondition_u, geom, time+dt);
 #if (AMREX_SPACEDIM > 1)
     MultiFab::Copy(v_old, v_new, 0, 0, 1, 0);
-    Boundary_Condition(v_old, BoundaryCondition_v, geom);
+    Boundary_Condition(v_old, BoundaryCondition_v, geom, time+dt);
 #endif
 #if (AMREX_SPACEDIM > 2)
     MultiFab::Copy(w_old, w_new, 0, 0, 1, 0);
-    Boundary_Condition(w_old, BoundaryCondition_w, geom);
+    Boundary_Condition(w_old, BoundaryCondition_w, geom, time+dt);
 #endif
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
@@ -318,13 +326,13 @@ void advance (MultiFab& u_old, MultiFab& u_new, BoundaryCondition const& Boundar
     for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
     {
         // lo-side BCs
-        if (BoundaryCondition_P.lo[idim] == BoundaryConditionType::Periodic) {
+        if (BoundaryCondition_P.Data.lo[idim] == BoundaryConditionType::Periodic) {
             bc_lo[idim] = LinOpBCType::Periodic;
         }
-        else if (BoundaryCondition_P.lo_Dirichlet[idim] == 0.0) {
+        else if (BoundaryCondition_P.Data.lo[idim] == BoundaryConditionType::Neumann) {
             bc_lo[idim] = LinOpBCType::Neumann;
         }
-        else if (BoundaryCondition_P.lo_Neumann[idim] == 0.0) {
+        else if (BoundaryCondition_P.Data.lo[idim] == BoundaryConditionType::Dirichlet) {
             bc_lo[idim] = LinOpBCType::Dirichlet;
         }
         else {
@@ -332,13 +340,13 @@ void advance (MultiFab& u_old, MultiFab& u_new, BoundaryCondition const& Boundar
         }
 
         // hi-side BCs
-        if (BoundaryCondition_P.hi[idim] == BoundaryConditionType::Periodic) {
+        if (BoundaryCondition_P.Data.hi[idim] == BoundaryConditionType::Periodic) {
             bc_hi[idim] = LinOpBCType::Periodic;
         }
-        else if (BoundaryCondition_P.hi_Dirichlet[idim] == 0.0) {
+        else if (BoundaryCondition_P.Data.hi[idim] == BoundaryConditionType::Neumann) {
             bc_hi[idim] = LinOpBCType::Neumann;
         }
-        else if (BoundaryCondition_P.hi_Neumann[idim] == 0.0) {
+        else if (BoundaryCondition_P.Data.hi[idim] == BoundaryConditionType::Dirichlet) {
             bc_hi[idim] = LinOpBCType::Dirichlet;
         }
         else {
@@ -382,6 +390,7 @@ void advance (MultiFab& u_old, MultiFab& u_new, BoundaryCondition const& Boundar
     mlmg.setMaxFmgIter(max_fmg_iter);
     mlmg.setVerbose(verbose);
     mlmg.setBottomVerbose(bottom_verbose);
+//    mlmg.setBottomSolver(MLMG::BottomSolver::smoother);
 
     // relative and absolute tolerances for linear solve
     const Real tol_abs = 0.0;
@@ -392,7 +401,7 @@ void advance (MultiFab& u_old, MultiFab& u_new, BoundaryCondition const& Boundar
     mlmg.solve({&PCorrect}, {&Div_Vel}, tol_rel, tol_abs);
 
     // Velocity correction
-    Boundary_Condition(PCorrect, BoundaryCondition_P, geom);
+    Boundary_Condition(PCorrect, BoundaryCondition_P, geom, time+dt);
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
@@ -426,7 +435,7 @@ void advance (MultiFab& u_old, MultiFab& u_new, BoundaryCondition const& Boundar
         }
     }
 
-    Boundary_Condition(P_new, BoundaryCondition_P, geom);
+    Boundary_Condition(P_new, BoundaryCondition_P, geom, time+dt);
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
@@ -488,10 +497,12 @@ void Initial_Condition (amrex::MultiFab& u_new, BoundaryCondition const& Boundar
 #endif
                         amrex::MultiFab& P_new,
                         amrex::Array<amrex::MultiFab,AMREX_SPACEDIM>& Vel_new,
-                        amrex::Geometry const& geom)
+                        amrex::Geometry const& geom,
+                        InitialCondition const& initial_condition)
 {
     GpuArray<Real,AMREX_SPACEDIM> dX      = geom.CellSizeArray();
     GpuArray<Real,AMREX_SPACEDIM> prob_lo = geom.ProbLoArray();
+    InitialConditionData const initial_condition_data = initial_condition.Data;
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
@@ -504,17 +515,21 @@ void Initial_Condition (amrex::MultiFab& u_new, BoundaryCondition const& Boundar
         auto const& P_newArray = P_new.array(mfi);
 
         const Box& bx = mfi.tilebox();
-        amrex::ParallelFor(bx,
-        [=] AMREX_GPU_DEVICE(int i, int j, int k)
+        amrex::ParallelForRNG(bx,
+        [=] AMREX_GPU_DEVICE(int i, int j, int k, amrex::RandomEngine const& random_engine)
         {
-            Initial_Condition(i,j,k,AMREX_D_DECL(u_newArray,v_newArray,w_newArray),P_newArray,dX,prob_lo);
+            Initial_Condition(i, j, k,
+                 AMREX_D_DECL(u_newArray, v_newArray, w_newArray), P_newArray,
+                              dX, prob_lo,
+                              initial_condition_data,
+                              random_engine);
         });
     }
 
     AMREX_D_TERM(
-    Boundary_Condition(u_new, BoundaryCondition_u, geom);,
-    Boundary_Condition(v_new, BoundaryCondition_v, geom);,
-    Boundary_Condition(w_new, BoundaryCondition_w, geom));
+    Boundary_Condition(u_new, BoundaryCondition_u, geom, 0.0);,
+    Boundary_Condition(v_new, BoundaryCondition_v, geom, 0.0);,
+    Boundary_Condition(w_new, BoundaryCondition_w, geom, 0.0));
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
@@ -555,29 +570,22 @@ void Initial_Condition (amrex::MultiFab& u_new, BoundaryCondition const& Boundar
 
 void Boundary_Condition (amrex::MultiFab& f,
                          BoundaryCondition const& BoundaryCondition_f,
-                         amrex::Geometry const& geom)
+                         amrex::Geometry const& geom,
+                         amrex::Real const& time)
 {
     // Fill the ghost cells of each grid from the other grids includes periodic domain boundaries.
     f.FillBoundary(geom.periodicity());
 
     // Fill the ghost cells of non-periodic boundaries.
     int nGrow = f.nGrow();
-    GpuArray<Real,AMREX_SPACEDIM> dX = geom.CellSizeArray();
+    GpuArray<Real,AMREX_SPACEDIM> prob_lo = geom.ProbLoArray();
+    GpuArray<Real,AMREX_SPACEDIM> prob_hi = geom.ProbHiArray();
+    GpuArray<Real,AMREX_SPACEDIM> dX      = geom.CellSizeArray();
 
     const auto& domain_box = geom.Domain();
-    const auto& domain_lo = domain_box.loVect();
-    const auto& domain_hi = domain_box.hiVect();
-    const int ilo = domain_lo[0];
-    const int ihi = domain_hi[0];
-#if (AMREX_SPACEDIM > 1)
-    const int jlo = domain_lo[1];
-    const int jhi = domain_hi[1];
-#endif
-#if (AMREX_SPACEDIM > 2)
-    const int klo = domain_lo[2];
-    const int khi = domain_hi[2];
-#endif
-
+    const auto& domain_lo = domain_box.smallEnd();
+    const auto& domain_hi = domain_box.bigEnd();
+    BoundaryConditionData const BoundaryConditionData_f = BoundaryCondition_f.Data;
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
@@ -590,13 +598,16 @@ void Boundary_Condition (amrex::MultiFab& f,
         {
             Boundary_Condition(i, j, k,
                                fArray,
-                               BoundaryCondition_f.lo, BoundaryCondition_f.hi,
-                               BoundaryCondition_f.lo_Dirichlet, BoundaryCondition_f.hi_Dirichlet,
-                               BoundaryCondition_f.lo_Neumann  , BoundaryCondition_f.hi_Neumann,
-                               BoundaryCondition_f.lo_Function , BoundaryCondition_f.hi_Function,
-                  AMREX_D_DECL(ilo, jlo, klo),
-                  AMREX_D_DECL(ihi, jhi, khi),
-                               dX);
+                               BoundaryConditionData_f.lo, BoundaryConditionData_f.hi,
+                               BoundaryConditionData_f.lo_Dirichlet, BoundaryConditionData_f.hi_Dirichlet,
+                               BoundaryConditionData_f.lo_Neumann  , BoundaryConditionData_f.hi_Neumann,
+                               BoundaryConditionData_f.lo_Function , BoundaryConditionData_f.hi_Function,
+                  AMREX_D_DECL(domain_lo[0], domain_lo[1], domain_lo[2]),
+                  AMREX_D_DECL(domain_hi[0], domain_hi[1], domain_hi[2]),
+                  AMREX_D_DECL(  prob_lo[0],   prob_lo[1],   prob_lo[2]),
+                  AMREX_D_DECL(  prob_hi[0],   prob_hi[1],   prob_hi[2]),
+                  AMREX_D_DECL(       dX[0],        dX[1],        dX[2]),
+                               time);
         });
     }
 }
