@@ -1,6 +1,7 @@
 #ifndef ProblemSetup_H_
 #define ProblemSetup_H_
 
+#include "Variables.H"
 #include "mystruct.H"
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE

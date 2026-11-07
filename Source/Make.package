@@ -1,2 +1,2 @@
 CEXE_sources += main.cpp myfunc.cpp checkpoint.cpp
-CEXE_headers += myfunc.H mykernel.H mystruct.H
+CEXE_headers += myfunc.H mykernel.H mystruct.H Variables.H
