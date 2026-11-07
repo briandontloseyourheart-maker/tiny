@@ -4,40 +4,341 @@
 #include "ProblemSetup.H"
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
+void Conservative2Flux(amrex::Array<amrex::Real,NSTATE>& Flux,
+                       amrex::Array<amrex::Real,NSTATE> const& Conservative,
+                       amrex::Real const& gamma,
+                       int ID_Dimension)
+{
+    amrex::Array<amrex::Real,NSTATE> Primitive;
+    Conservative2Primitive(Primitive,
+                           Conservative,
+                           gamma);
+    
+    amrex::Real rho;
+    AMREX_D_TERM( amrex::Real u;,
+                  amrex::Real v;,
+                  amrex::Real w );
+    amrex::Real p;
+    Primitive2State(rho,
+       AMREX_D_DECL(u, v, w),
+                    p,
+                    Primitive);
+
+    AMREX_D_TERM( amrex::Real rho_u;,
+                  amrex::Real rho_v;,
+                  amrex::Real rho_w );
+    amrex::Real rho_E;
+    Conservative2State(rho,
+          AMREX_D_DECL(rho_u, rho_v, rho_w),
+                       rho_E,
+                       Conservative);
+    
+    amrex::Real V;
+    //x
+    if (ID_Dimension == 0){
+        V = u;
+    }
+#if (AMREX_SPACEDIM > 1)
+    //y
+    else if (ID_Dimension == 1){
+        V = v;
+    }
+#endif
+#if (AMREX_SPACEDIM > 2)    
+    //z
+    else if (ID_Dimension == 2){
+        V = w;
+    }
+#endif
+
+    Component2Vector(Flux,
+                     rho*V,
+        AMREX_D_DECL(rho_u*V, rho_v*V, rho_w*V),
+                     (rho_E + p)*V);
+    Flux[INDEX_MomentumX+ID_Dimension] += p;
+}
+
+
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
+void Riemann_LLF(amrex::Array<amrex::Real,NSTATE>& Flux_Riemann,
+                 amrex::Real& cmax,
+                 amrex::Array<amrex::Real,NSTATE> const& ConservativeL,
+                 amrex::Array<amrex::Real,NSTATE> const& ConservativeR,
+                 amrex::Real const& gamma,
+                 int ID_Dimension)
+{
+    amrex::Array<amrex::Real,NSTATE> PrimitiveL;
+    Conservative2Primitive(PrimitiveL,
+                           ConservativeL,
+                           gamma);
+    
+    amrex::Array<amrex::Real,NSTATE> PrimitiveR;
+    Conservative2Primitive(PrimitiveR,
+                           ConservativeR,
+                           gamma);
+    
+    amrex::Array<amrex::Real,NSTATE> FluxL;
+    Conservative2Flux(FluxL,
+                      ConservativeL,
+                      gamma,
+                      ID_Dimension);
+    
+    amrex::Array<amrex::Real,NSTATE> FluxR;
+    Conservative2Flux(FluxR,
+                      ConservativeR,
+                      gamma,
+                      ID_Dimension);
+    
+    amrex::Real rhoL;
+    AMREX_D_TERM( amrex::Real uL;,
+                  amrex::Real vL;,
+                  amrex::Real wL );
+    amrex::Real pL;
+    Primitive2State(rhoL,
+       AMREX_D_DECL(uL, vL, wL),
+                    pL,
+                    PrimitiveL);
+
+    amrex::Real rhoR;
+    AMREX_D_TERM( amrex::Real uR;,
+                  amrex::Real vR;,
+                  amrex::Real wR );
+    amrex::Real pR;
+    Primitive2State(rhoR,
+       AMREX_D_DECL(uR, vR, wR),
+                    pR,
+                    PrimitiveR);
+    
+    amrex::Real cL = std::sqrt(gamma*pL/rhoL);
+    amrex::Real cR = std::sqrt(gamma*pR/rhoR);
+    
+    amrex::Real VL;
+    amrex::Real VR;
+	//x
+    if (ID_Dimension == 0){
+        VL = uL;
+        VR = uR;
+    }
+#if (AMREX_SPACEDIM > 1)
+    //y
+    else if (ID_Dimension == 1){
+        VL = vL;
+        VR = vR;
+    }
+#endif
+#if (AMREX_SPACEDIM > 2)      
+    //z
+    else if (ID_Dimension == 2){
+        VL = wL;
+        VR = wR;
+    }
+#endif
+    
+    amrex::Real Lambda = std::max( std::abs(VL) + cL, std::abs(VR) + cR );
+    for (int i_State = 0; i_State < NSTATE; ++i_State){
+        Flux_Riemann[i_State] = ( FluxL[i_State] + FluxR[i_State] - Lambda*(ConservativeR[i_State] - ConservativeL[i_State]) )/2.0;
+    }
+
+    cmax = std::max(cL + std::sqrt(AMREX_D_TERM(uL*uL, + vL*vL, + wL*wL)), cR + std::sqrt(AMREX_D_TERM(uR*uR, + vR*vR, + wR*wR)));
+
+}
+
+
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
+void Limiter_Minmod(amrex::Real& Output,
+                    amrex::Real const& Input_a,
+                    amrex::Real const& Input_b)
+{
+    Output = std::min( std::max(Input_a,0.0),std::max(Input_b,0.0) )
+            +std::max( std::min(Input_a,0.0),std::min(Input_b,0.0) );
+}
+
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
+void Reconstruction2Face_MUSCL(amrex::Real& f_Face,
+                               amrex::Real const& f_m,
+                               amrex::Real const& f_c,
+                               amrex::Real const& f_p,
+                               int ID_Face)
+{
+    amrex::Real df_m = f_c - f_m;
+    amrex::Real df_p = f_p - f_c;
+    amrex::Real df;
+    Limiter_Minmod(df,
+                   df_m, df_p);
+    f_Face = f_c + amrex::Real(ID_Face)*0.5*df;
+}
+
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
+void Reconstruction2Face_Conservative_MUSCL(amrex::Array<amrex::Real,NSTATE>& Conservative_Face,
+                                            amrex::Array<amrex::Real,NSTATE> const& Conservative_m,
+                                            amrex::Array<amrex::Real,NSTATE> const& Conservative_c,
+                                            amrex::Array<amrex::Real,NSTATE> const& Conservative_p,
+                                            amrex::Real const& gamma,
+                                            int ID_Face)
+{
+    amrex::Array<amrex::Real,NSTATE> Primitive_m;
+    Conservative2Primitive(Primitive_m,
+                           Conservative_m,
+                           gamma);
+
+    amrex::Array<amrex::Real,NSTATE> Primitive_c;
+    Conservative2Primitive(Primitive_c,
+                           Conservative_c,
+                           gamma);
+
+    amrex::Array<amrex::Real,NSTATE> Primitive_p;
+    Conservative2Primitive(Primitive_p,
+                           Conservative_p,
+                           gamma);
+
+    amrex::Array<amrex::Real,NSTATE> Primitive_Face;
+    for (int iState = 0; iState < NSTATE; iState++)
+    {
+        amrex::Real f_m = Primitive_m[iState];
+        amrex::Real f_c = Primitive_c[iState];
+        amrex::Real f_p = Primitive_p[iState];
+        amrex::Real f_Face;
+        Reconstruction2Face_MUSCL(f_Face,
+                                  f_m, f_c, f_p,
+                                  ID_Face);
+        Primitive_Face[iState] = f_Face;
+    }
+
+    Primitive2Conservative(Conservative_Face,
+                           Primitive_Face,
+                           gamma);
+}
+
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
+void Reconstruction2FaceLR_Conservative_MUSCL(amrex::Array<amrex::Real,NSTATE>& ConservativeL,
+                                              amrex::Array<amrex::Real,NSTATE>& ConservativeR,
+                                              amrex::Array<amrex::Real,NSTATE> const& Conservative_mm,
+                                              amrex::Array<amrex::Real,NSTATE> const& Conservative_m,
+                                              amrex::Array<amrex::Real,NSTATE> const& Conservative_c,
+                                              amrex::Array<amrex::Real,NSTATE> const& Conservative_p,
+                                              amrex::Real const& gamma)
+{
+    int ID_Face;
+
+    ID_Face = 1;
+    Reconstruction2Face_Conservative_MUSCL(ConservativeL,
+                                           Conservative_mm, Conservative_m, Conservative_c,
+                                           gamma,
+                                           ID_Face);
+
+    ID_Face = -1;
+    Reconstruction2Face_Conservative_MUSCL(ConservativeR,
+                                           Conservative_m, Conservative_c, Conservative_p,
+                                           gamma,
+                                           ID_Face);
+}
+
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
+void Reconstruction2FaceLR_Conservative_MUSCL(int i, int j, int k,
+                                              amrex::Array<amrex::Real,NSTATE>& ConservativeL,
+                                              amrex::Array<amrex::Real,NSTATE>& ConservativeR,
+                                              amrex::Array4<amrex::Real const> const& Conservative,
+                                              amrex::Real const& gamma,
+                                              int ID_Dimension)
+{
+    amrex::Array<amrex::Real,NSTATE> Conservative_mm;
+    amrex::Array<amrex::Real,NSTATE> Conservative_m;
+    amrex::Array<amrex::Real,NSTATE> Conservative_c;
+    amrex::Array<amrex::Real,NSTATE> Conservative_p;
+    for (int iState = 0; iState < NSTATE; iState++)
+    {
+        Conservative_c[iState] = Conservative(i,j,k,iState);
+        if (ID_Dimension == 0){
+            Conservative_mm[iState] = Conservative(i-2,j,k,iState);
+            Conservative_m [iState] = Conservative(i-1,j,k,iState);
+            Conservative_p [iState] = Conservative(i+1,j,k,iState);
+        }
+        else if (ID_Dimension == 1){
+            Conservative_mm[iState] = Conservative(i,j-2,k,iState);
+            Conservative_m [iState] = Conservative(i,j-1,k,iState);
+            Conservative_p [iState] = Conservative(i,j+1,k,iState);
+        }
+        else if (ID_Dimension == 2){
+            Conservative_mm[iState] = Conservative(i,j,k-2,iState);
+            Conservative_m [iState] = Conservative(i,j,k-1,iState);
+            Conservative_p [iState] = Conservative(i,j,k+1,iState);
+        }
+    }
+    Reconstruction2FaceLR_Conservative_MUSCL(ConservativeL, ConservativeR,
+                                             Conservative_mm, Conservative_m, Conservative_c, Conservative_p,
+                                             gamma);
+}
+
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
+void Conservative2FluxHyperbolic(int i, int j, int k,
+                                 amrex::Array<amrex::Real,NSTATE>& Flux,
+                                 amrex::Real& cmax,
+                                 amrex::Array4<amrex::Real const> const& Conservative,
+                                 amrex::Real const& gamma,
+                                 int ID_Dimension)
+{
+    amrex::Array<amrex::Real,NSTATE> ConservativeL;
+    amrex::Array<amrex::Real,NSTATE> ConservativeR;
+    Reconstruction2FaceLR_Conservative_MUSCL(i, j, k,
+                                             ConservativeL, ConservativeR,
+                                             Conservative,
+                                             gamma,
+                                             ID_Dimension);
+
+    Riemann_LLF(Flux, cmax,
+                ConservativeL, ConservativeR,
+                gamma,
+                ID_Dimension);
+}
+
+
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void Initial_Condition (int i, int j, int k,
-                        AMREX_D_DECL(
-                        amrex::Array4<amrex::Real> const& uArray,
-                        amrex::Array4<amrex::Real> const& vArray,
-                        amrex::Array4<amrex::Real> const& wArray),
-                        amrex::Array4<amrex::Real> const& PArray,
+                        amrex::Array4<amrex::Real> const& UArray,
                         amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dX,
                         amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& prob_lo,
                         InitialConditionData const& initial_condition_data,
-                        amrex::RandomEngine const& random_engine)
+                        amrex::RandomEngine const& random_engine,
+                        amrex::Real const& gamma)
 {
     AMREX_D_TERM(amrex::Real x = prob_lo[0] + (amrex::Real(i) + 0.5) * dX[0];,
                  amrex::Real y = prob_lo[1] + (amrex::Real(j) + 0.5) * dX[1];,
                  amrex::Real z = prob_lo[2] + (amrex::Real(k) + 0.5) * dX[2]);
 
-    amrex::Real AMREX_D_DECL(u, v, w), P;
-    Initial_Condition(AMREX_D_DECL(u, v, w), P,
-                      AMREX_D_DECL(x, y, z),
+    amrex::Real rho, AMREX_D_DECL(u, v, w), P;
+    Initial_Condition(rho, AMREX_D_DECL(u, v, w), P,
+         AMREX_D_DECL(x, y, z),
                       initial_condition_data);
 
-    amrex::Real u_Random = amrex::RandomNormal(0.0, initial_condition_data.u_noise, random_engine);
+    amrex::Real rho_Random = amrex::RandomNormal(0.0, initial_condition_data.rho_noise, random_engine);
+    amrex::Real u_Random   = amrex::RandomNormal(0.0, initial_condition_data.u_noise  , random_engine);
 #if (AMREX_SPACEDIM > 1)
-    amrex::Real v_Random = amrex::RandomNormal(0.0, initial_condition_data.v_noise, random_engine);
+    amrex::Real v_Random   = amrex::RandomNormal(0.0, initial_condition_data.v_noise  , random_engine);
 #endif
 #if (AMREX_SPACEDIM > 2)
-    amrex::Real w_Random = amrex::RandomNormal(0.0, initial_condition_data.w_noise, random_engine);
+    amrex::Real w_Random   = amrex::RandomNormal(0.0, initial_condition_data.w_noise  , random_engine);
 #endif
-    amrex::Real P_Random = amrex::RandomNormal(0.0, initial_condition_data.P_noise, random_engine);
+    amrex::Real P_Random   = amrex::RandomNormal(0.0, initial_condition_data.P_noise  , random_engine);
 
+    rho += rho_Random;
     AMREX_D_TERM(
-    uArray(i,j,k) = u + u_Random;,
-    vArray(i,j,k) = v + v_Random;,
-    wArray(i,j,k) = w + w_Random);
-    PArray(i,j,k) = P + P_Random;
+    u   += u_Random;,
+    v   += v_Random;,
+    w   += w_Random);
+    P   += P_Random;
+
+    amrex::Array<amrex::Real,NSTATE> Primitive;
+    State2Primitive(Primitive,
+                    rho, AMREX_D_DECL(u, v, w), P);
+
+    amrex::Array<amrex::Real,NSTATE> Conservative;
+    Primitive2Conservative(Conservative,
+                           Primitive,
+                           gamma);
+
+    for (int iState = 0; iState < NSTATE; iState++){
+        UArray(i,j,k,iState) = Conservative[iState];
+    }
 }
 
 
@@ -74,7 +375,7 @@ void Boundary_Condition (int i, int j, int k,
     int ID_Dimension = 0;
     if (i < ilo){
         if (BC_lo[ID_Dimension] != BoundaryConditionType::Periodic){
-            int iInterior = ilo;
+            int iInterior = 2*ilo - i - 1;
             int jInterior = j;
             int kInterior = k;
             amrex::Real fInterior = fArray(iInterior, jInterior, kInterior);
@@ -99,7 +400,7 @@ void Boundary_Condition (int i, int j, int k,
     }
     else if (i > ihi){
         if (BC_hi[ID_Dimension] != BoundaryConditionType::Periodic){
-            int iInterior = ihi;
+            int iInterior = 2*ihi - i + 1;
             int jInterior = j;
             int kInterior = k;
             amrex::Real fInterior = fArray(iInterior, jInterior, kInterior);
@@ -127,7 +428,7 @@ void Boundary_Condition (int i, int j, int k,
     if (j < jlo){
         if (BC_lo[ID_Dimension] != BoundaryConditionType::Periodic){
             int iInterior = i;
-            int jInterior = jlo;
+            int jInterior = 2*jlo - j - 1;
             int kInterior = k;
             amrex::Real fInterior = fArray(iInterior, jInterior, kInterior);
 
@@ -152,7 +453,7 @@ void Boundary_Condition (int i, int j, int k,
     else if (j > jhi){
         if (BC_hi[ID_Dimension] != BoundaryConditionType::Periodic){
             int iInterior = i;
-            int jInterior = jhi;
+            int jInterior = 2*jhi - j + 1;
             int kInterior = k;
             amrex::Real fInterior = fArray(iInterior, jInterior, kInterior);
 
@@ -181,7 +482,7 @@ void Boundary_Condition (int i, int j, int k,
         if (BC_lo[ID_Dimension] != BoundaryConditionType::Periodic){
             int iInterior = i;
             int jInterior = j;
-            int kInterior = klo;
+            int kInterior = 2*klo - k - 1;
             amrex::Real fInterior = fArray(iInterior, jInterior, kInterior);
 
             AMREX_D_TERM(
@@ -206,7 +507,7 @@ void Boundary_Condition (int i, int j, int k,
         if (BC_hi[ID_Dimension] != BoundaryConditionType::Periodic){
             int iInterior = i;
             int jInterior = j;
-            int kInterior = khi;
+            int kInterior = 2*khi - k + 1;
             amrex::Real fInterior = fArray(iInterior, jInterior, kInterior);
 
             AMREX_D_TERM(
@@ -534,85 +835,5 @@ void Laplacian (int i, int j, int k,
     amrex::Real d2f_dz2 = (df_dz_zFace_plus - df_dz_zFace_mins)/dz;
 #endif
     Laplacian_f = AMREX_D_TERM(d2f_dx2, + d2f_dy2, + d2f_dz2);
-}
-
-AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-void Velocity_Update (int i, int j, int k,
-                      amrex::Array4<amrex::Real> const& Vel_new,
-                      amrex::Array4<amrex::Real const> const& Vel_old,
-         AMREX_D_DECL(amrex::Array4<amrex::Real const> const& u_old,
-                      amrex::Array4<amrex::Real const> const& v_old,
-                      amrex::Array4<amrex::Real const> const& w_old),
-                      amrex::Array4<amrex::Real const> const& P_old,
-         AMREX_D_DECL(amrex::Real const& dx,
-                      amrex::Real const& dy,
-                      amrex::Real const& dz),
-                      amrex::Real const& dt,
-         AMREX_D_DECL(amrex::Real const& x,
-                      amrex::Real const& y,
-                      amrex::Real const& z),
-                      amrex::Real const& time,
-                      amrex::Real const& nu,
-                      ImmersedBoundaryData const& immersed_boundary_data,
-                      int ID_VelocityCenter,
-                      int ID_Dimension)
-{
-    amrex::Array<amrex::Real,AMREX_SPACEDIM> dX = {AMREX_D_DECL(dx, dy, dz)};
-    amrex::Real Advection_Vel;
-    Advection(i, j, k,
-              Advection_Vel,
-              Vel_old,
- AMREX_D_DECL(u_old, v_old, w_old),
- AMREX_D_DECL(   dx,    dy,    dz),
-              ID_VelocityCenter);
-
-    amrex::Real Laplacian_Vel;
-    Laplacian(i, j, k,
-              Laplacian_Vel,
-              Vel_old,
- AMREX_D_DECL(dx, dy, dz));
-
-    amrex::Real Grad_P;
-    Gradient_Center(i, j, k,
-                    Grad_P,
-                    P_old, dX[ID_Dimension], ID_Dimension);
-
-    amrex::Real Alpha_Solid;
-    Solid_Fraction(Alpha_Solid,
-      AMREX_D_DECL(x, y, z), time+dt,
-                   immersed_boundary_data);
-
-    amrex::Array<amrex::Real,AMREX_SPACEDIM> Vel_Solid;
-    Solid_Velocity(Vel_Solid,
-      AMREX_D_DECL(x, y, z), time+dt,
-                   immersed_boundary_data);
-
-    amrex::Real Cd;
-    Drag_Coefficient(Cd,
-                     Alpha_Solid, dt);
-
-    amrex::Real Force = 0.0;
-
-    Vel_new(i,j,k) = (Vel_old(i,j,k) + dt*(-Advection_Vel - Grad_P + nu*Laplacian_Vel + Force) + dt*Cd*Vel_Solid[ID_Dimension])/(1.0 + dt*Cd);
-}
-
-
-AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-void Velocity_Correct (int i, int j, int k,
-                      amrex::Array4<amrex::Real> const& Vel_new,
-                      amrex::Array4<amrex::Real const> const& Vel_old,
-                      amrex::Array4<amrex::Real const> const& PCorrect,
-         AMREX_D_DECL(amrex::Real const& dx,
-                      amrex::Real const& dy,
-                      amrex::Real const& dz),
-                      amrex::Real const& dt,
-                      int ID_Dimension)
-{
-    amrex::Array<amrex::Real,AMREX_SPACEDIM> dX = {AMREX_D_DECL(dx, dy, dz)};
-    amrex::Real Grad_PCorrect;
-    Gradient_Center(i, j, k,
-                    Grad_PCorrect,
-                    PCorrect, dX[ID_Dimension], ID_Dimension);
-    Vel_new(i,j,k) = Vel_old(i,j,k) - dt*Grad_PCorrect;
 }
 #endif

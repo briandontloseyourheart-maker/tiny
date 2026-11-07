@@ -1,6 +1,7 @@
 #ifndef ProblemSetup_H_
 #define ProblemSetup_H_
 
+#include "Variables.H"
 #include "mystruct.H"
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
@@ -42,21 +43,21 @@ void Drag_Coefficient (amrex::Real& Cd,
 }
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-void Initial_Condition (AMREX_D_DECL(
-                        amrex::Real& u,
+void Initial_Condition (amrex::Real& rho,
+           AMREX_D_DECL(amrex::Real& u,
                         amrex::Real& v,
                         amrex::Real& w),
                         amrex::Real& P,
-                        AMREX_D_DECL(
-                        amrex::Real const& x,
+           AMREX_D_DECL(amrex::Real const& x,
                         amrex::Real const& y,
                         amrex::Real const& z),
                         InitialConditionData const& initial_condition_data)
 {
+    rho = initial_condition_data.rho(AMREX_D_DECL(x, y, z));
     AMREX_D_TERM(
-    u = initial_condition_data.u(AMREX_D_DECL(x, y, z));,
-    v = initial_condition_data.v(AMREX_D_DECL(x, y, z));,
-    w = initial_condition_data.w(AMREX_D_DECL(x, y, z)));
-    P = initial_condition_data.P(AMREX_D_DECL(x, y, z));
+    u   = initial_condition_data.u(AMREX_D_DECL(x, y, z));,
+    v   = initial_condition_data.v(AMREX_D_DECL(x, y, z));,
+    w   = initial_condition_data.w(AMREX_D_DECL(x, y, z)));
+    P   = initial_condition_data.P(AMREX_D_DECL(x, y, z));
 }
 #endif
