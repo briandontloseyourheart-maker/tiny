@@ -13,43 +13,22 @@ void main_main ();
 
 void WriteCheckpoint(const int& step,
                      const amrex::Real& time,
-                     const amrex::MultiFab& u,
-#if (AMREX_SPACEDIM > 1)
-                     const amrex::MultiFab& v,
-#endif
-#if (AMREX_SPACEDIM > 2)
-                     const amrex::MultiFab& w,
-#endif
-                     const amrex::MultiFab& P,
-                     const amrex::Array<amrex::MultiFab,AMREX_SPACEDIM>& Vel);
+                     const amrex::MultiFab& U);
 
 void ReadCheckpoint(const int& restart,
                     amrex::Real& time,
-                    amrex::MultiFab& u,
-#if (AMREX_SPACEDIM > 1)
-                    amrex::MultiFab& v,
-#endif
-#if (AMREX_SPACEDIM > 2)
-                    amrex::MultiFab& w,
-#endif
-                    amrex::MultiFab& P,
-                    amrex::Array<amrex::MultiFab,AMREX_SPACEDIM>& Vel,
+                    amrex::MultiFab& U,
                     amrex::BoxArray& ba,
-                    amrex::DistributionMapping& dm);
+                    amrex::DistributionMapping& dm,
+                    int Nghost);
 
-void advance (amrex::MultiFab& u_old, amrex::MultiFab& u_new, BoundaryCondition const& BoundaryCondition_u,
-#if (AMREX_SPACEDIM > 1)
-              amrex::MultiFab& v_old, amrex::MultiFab& v_new, BoundaryCondition const& BoundaryCondition_v,
-#endif
-#if (AMREX_SPACEDIM > 2)
-              amrex::MultiFab& w_old, amrex::MultiFab& w_new, BoundaryCondition const& BoundaryCondition_w,
-#endif
-              amrex::MultiFab& P_old, amrex::MultiFab& P_new, BoundaryCondition const& BoundaryCondition_P,
-              amrex::Array<amrex::MultiFab,AMREX_SPACEDIM>& Vel_old, amrex::Array<amrex::MultiFab,AMREX_SPACEDIM>& Vel_new,
+void advance (amrex::MultiFab& U_old, amrex::MultiFab& U_new,
+              amrex::Array<BoundaryCondition,NSTATE> const& BoundaryCondition_V,
               amrex::Array<amrex::Real,AMREX_SPACEDIM>& Force_Hydrodynamic,
               amrex::Geometry const& geom,
               amrex::Real const& dt,
               amrex::Real const& time,
+              amrex::Real const& gamma,
               amrex::Real const& nu,
               ImmersedBoundary const& immersed_boundary,
               amrex::Real const& tol_rel,
@@ -58,20 +37,21 @@ void advance (amrex::MultiFab& u_old, amrex::MultiFab& u_new, BoundaryCondition 
               int verbose,
               int bottom_verbose);
 
-void Initial_Condition (amrex::MultiFab& u_new, BoundaryCondition const& BoundaryCondition_u,
-#if (AMREX_SPACEDIM > 1)
-                        amrex::MultiFab& v_new, BoundaryCondition const& BoundaryCondition_v,
-#endif
-#if (AMREX_SPACEDIM > 2)
-                        amrex::MultiFab& w_new, BoundaryCondition const& BoundaryCondition_w,
-#endif
-                        amrex::MultiFab& P_new,
-                        amrex::Array<amrex::MultiFab,AMREX_SPACEDIM>& Vel_new,
+void Initial_Condition (amrex::MultiFab& U_new,
                         amrex::Geometry const& geom,
-                        InitialCondition const& initial_condition);
+                        InitialCondition const& initial_condition,
+                        amrex::Real const& gamma);
 
-void Boundary_Condition (amrex::MultiFab& f,
-                         BoundaryCondition const& BoundaryCondition_f,
+void Boundary_Condition (amrex::MultiFab& U,
+                         amrex::Array<BoundaryCondition,NSTATE> const& BoundaryCondition_V,
                          amrex::Geometry const& geom,
-                         amrex::Real const& time);
+                         amrex::Real const& time,
+                         amrex::Real const& gamma);
+
+void Max_WaveSpeed (amrex::Array<amrex::Real,AMREX_SPACEDIM>& max_wave_speed,
+                    amrex::MultiFab& U,
+                    amrex::Array<BoundaryCondition,NSTATE> const& BoundaryCondition_V,
+                    amrex::Geometry const& geom,
+                    amrex::Real const& time,
+                    amrex::Real const& gamma);
 #endif

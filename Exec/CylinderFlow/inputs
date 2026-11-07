@@ -18,40 +18,15 @@ max_grid_size = 16
 # Boundary condition
 is_periodic    =  0    0    1
 
-# Lid-driven cavity
-# BC_u.lo_Dirichlet =  "1.0"  "1.0"  "0.0"
-# BC_u.lo_Neumann   =  "0.0"  "0.0"  "0.0"
-# BC_u.lo_Function  =  "0.0"  "0.0"  "0.0"
-
-# BC_u.hi_Dirichlet =  "1.0"  "1.0"  "0.0"
-# BC_u.hi_Neumann   =  "0.0"  "0.0"  "0.0"
-# BC_u.hi_Function  =  "0.0"  "1.0"  "0.0"
-
-# BC_v.lo_Dirichlet =  "1.0"  "1.0"  "0.0"
-# BC_v.lo_Neumann   =  "0.0"  "0.0"  "0.0"
-# BC_v.lo_Function  =  "0.0"  "0.0"  "0.0"
-
-# BC_v.hi_Dirichlet =  "1.0"  "1.0"  "0.0"
-# BC_v.hi_Neumann   =  "0.0"  "0.0"  "0.0"
-# BC_v.hi_Function  =  "0.0"  "0.0"  "0.0"
-
-# BC_w.lo_Dirichlet =  "1.0"  "1.0"  "0.0"
-# BC_w.lo_Neumann   =  "0.0"  "0.0"  "0.0"
-# BC_w.lo_Function  =  "0.0"  "0.0"  "0.0"
-
-# BC_w.hi_Dirichlet =  "0.0"  "1.0"  "0.0"
-# BC_w.hi_Neumann   =  "1.0"  "0.0"  "0.0"
-# BC_w.hi_Function  =  "0.0"  "0.0"  "0.0"
-
-# BC_P.lo_Dirichlet =  "0.0"  "0.0"  "0.0"
-# BC_P.lo_Neumann   =  "1.0"  "1.0"  "0.0"
-# BC_P.lo_Function  =  "0.0"  "0.0"  "0.0"
-
-# BC_P.hi_Dirichlet =  "0.0"  "0.0"  "0.0"
-# BC_P.hi_Neumann   =  "1.0"  "1.0"  "0.0"
-# BC_P.hi_Function  =  "0.0"  "0.0"  "0.0"
-
 # Channel flow
+BC_rho.lo_Dirichlet =  "1.0"  "0.0"  "0.0"
+BC_rho.lo_Neumann   =  "0.0"  "1.0"  "0.0"
+BC_rho.lo_Function  =  "1.0"  "0.0"  "0.0"
+
+BC_rho.hi_Dirichlet =  "0.0"  "0.0"  "0.0"
+BC_rho.hi_Neumann   =  "1.0"  "1.0"  "0.0"
+BC_rho.hi_Function  =  "0.0"  "0.0"  "0.0"
+
 BC_u.lo_Dirichlet =  "1.0"  "0.0"  "0.0"
 BC_u.lo_Neumann   =  "0.0"  "1.0"  "0.0"
 BC_u.lo_Function  =  "1.0"  "0.0"  "0.0"
@@ -93,6 +68,7 @@ CFL = 0.9
 CFL_abort = 100 # CFL stop criteria
 
 # Material properties
+gamma = 1.4
 Re = 200.0
 
 # Pressure poisson
@@ -113,18 +89,20 @@ bottom_verbose = 0
 # IC.u_noise = 0.001
 # ============================================================
 
-IC.u = "1.0"  
-IC.v = "0.0"	
-IC.w = "0.0"
-IC.P = "0.0"	
+IC.rho = "1.0"
+IC.u   = "1.0"  
+IC.v   = "0.0"	
+IC.w   = "0.0"
+IC.P   = "0.0"	
 
 # Additive white Gaussian noise: standard deviation sigma.
 # Set to 0.0 to disable noise for that field.
 
-IC.u_noise = 0.001
-IC.v_noise = 0.001
-IC.w_noise = 0.001
-IC.P_noise = 0.001
+IC.rho_noise = 0.001
+IC.u_noise   = 0.001
+IC.v_noise   = 0.001
+IC.w_noise   = 0.001
+IC.P_noise   = 0.001
 IC.noise_seed = 12345
 
 

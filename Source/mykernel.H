@@ -294,39 +294,51 @@ void Conservative2FluxHyperbolic(int i, int j, int k,
 
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 void Initial_Condition (int i, int j, int k,
-                        AMREX_D_DECL(
-                        amrex::Array4<amrex::Real> const& uArray,
-                        amrex::Array4<amrex::Real> const& vArray,
-                        amrex::Array4<amrex::Real> const& wArray),
-                        amrex::Array4<amrex::Real> const& PArray,
+                        amrex::Array4<amrex::Real> const& UArray,
                         amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dX,
                         amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& prob_lo,
                         InitialConditionData const& initial_condition_data,
-                        amrex::RandomEngine const& random_engine)
+                        amrex::RandomEngine const& random_engine,
+                        amrex::Real const& gamma)
 {
     AMREX_D_TERM(amrex::Real x = prob_lo[0] + (amrex::Real(i) + 0.5) * dX[0];,
                  amrex::Real y = prob_lo[1] + (amrex::Real(j) + 0.5) * dX[1];,
                  amrex::Real z = prob_lo[2] + (amrex::Real(k) + 0.5) * dX[2]);
 
-    amrex::Real AMREX_D_DECL(u, v, w), P;
-    Initial_Condition(AMREX_D_DECL(u, v, w), P,
-                      AMREX_D_DECL(x, y, z),
+    amrex::Real rho, AMREX_D_DECL(u, v, w), P;
+    Initial_Condition(rho, AMREX_D_DECL(u, v, w), P,
+         AMREX_D_DECL(x, y, z),
                       initial_condition_data);
 
-    amrex::Real u_Random = amrex::RandomNormal(0.0, initial_condition_data.u_noise, random_engine);
+    amrex::Real rho_Random = amrex::RandomNormal(0.0, initial_condition_data.rho_noise, random_engine);
+    amrex::Real u_Random   = amrex::RandomNormal(0.0, initial_condition_data.u_noise  , random_engine);
 #if (AMREX_SPACEDIM > 1)
-    amrex::Real v_Random = amrex::RandomNormal(0.0, initial_condition_data.v_noise, random_engine);
+    amrex::Real v_Random   = amrex::RandomNormal(0.0, initial_condition_data.v_noise  , random_engine);
 #endif
 #if (AMREX_SPACEDIM > 2)
-    amrex::Real w_Random = amrex::RandomNormal(0.0, initial_condition_data.w_noise, random_engine);
+    amrex::Real w_Random   = amrex::RandomNormal(0.0, initial_condition_data.w_noise  , random_engine);
 #endif
-    amrex::Real P_Random = amrex::RandomNormal(0.0, initial_condition_data.P_noise, random_engine);
+    amrex::Real P_Random   = amrex::RandomNormal(0.0, initial_condition_data.P_noise  , random_engine);
 
+    rho += rho_Random;
     AMREX_D_TERM(
-    uArray(i,j,k) = u + u_Random;,
-    vArray(i,j,k) = v + v_Random;,
-    wArray(i,j,k) = w + w_Random);
-    PArray(i,j,k) = P + P_Random;
+    u   += u_Random;,
+    v   += v_Random;,
+    w   += w_Random);
+    P   += P_Random;
+
+    amrex::Array<amrex::Real,NSTATE> Primitive;
+    State2Primitive(Primitive,
+                    rho, AMREX_D_DECL(u, v, w), P);
+
+    amrex::Array<amrex::Real,NSTATE> Conservative;
+    Primitive2Conservative(Conservative,
+                           Primitive,
+                           gamma);
+
+    for (int iState = 0; iState < NSTATE; iState++){
+        UArray(i,j,k,iState) = Conservative[iState];
+    }
 }
 
 
@@ -823,85 +835,5 @@ void Laplacian (int i, int j, int k,
     amrex::Real d2f_dz2 = (df_dz_zFace_plus - df_dz_zFace_mins)/dz;
 #endif
     Laplacian_f = AMREX_D_TERM(d2f_dx2, + d2f_dy2, + d2f_dz2);
-}
-
-AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-void Velocity_Update (int i, int j, int k,
-                      amrex::Array4<amrex::Real> const& Vel_new,
-                      amrex::Array4<amrex::Real const> const& Vel_old,
-         AMREX_D_DECL(amrex::Array4<amrex::Real const> const& u_old,
-                      amrex::Array4<amrex::Real const> const& v_old,
-                      amrex::Array4<amrex::Real const> const& w_old),
-                      amrex::Array4<amrex::Real const> const& P_old,
-         AMREX_D_DECL(amrex::Real const& dx,
-                      amrex::Real const& dy,
-                      amrex::Real const& dz),
-                      amrex::Real const& dt,
-         AMREX_D_DECL(amrex::Real const& x,
-                      amrex::Real const& y,
-                      amrex::Real const& z),
-                      amrex::Real const& time,
-                      amrex::Real const& nu,
-                      ImmersedBoundaryData const& immersed_boundary_data,
-                      int ID_VelocityCenter,
-                      int ID_Dimension)
-{
-    amrex::Array<amrex::Real,AMREX_SPACEDIM> dX = {AMREX_D_DECL(dx, dy, dz)};
-    amrex::Real Advection_Vel;
-    Advection(i, j, k,
-              Advection_Vel,
-              Vel_old,
- AMREX_D_DECL(u_old, v_old, w_old),
- AMREX_D_DECL(   dx,    dy,    dz),
-              ID_VelocityCenter);
-
-    amrex::Real Laplacian_Vel;
-    Laplacian(i, j, k,
-              Laplacian_Vel,
-              Vel_old,
- AMREX_D_DECL(dx, dy, dz));
-
-    amrex::Real Grad_P;
-    Gradient_Center(i, j, k,
-                    Grad_P,
-                    P_old, dX[ID_Dimension], ID_Dimension);
-
-    amrex::Real Alpha_Solid;
-    Solid_Fraction(Alpha_Solid,
-      AMREX_D_DECL(x, y, z), time+dt,
-                   immersed_boundary_data);
-
-    amrex::Array<amrex::Real,AMREX_SPACEDIM> Vel_Solid;
-    Solid_Velocity(Vel_Solid,
-      AMREX_D_DECL(x, y, z), time+dt,
-                   immersed_boundary_data);
-
-    amrex::Real Cd;
-    Drag_Coefficient(Cd,
-                     Alpha_Solid, dt);
-
-    amrex::Real Force = 0.0;
-
-    Vel_new(i,j,k) = (Vel_old(i,j,k) + dt*(-Advection_Vel - Grad_P + nu*Laplacian_Vel + Force) + dt*Cd*Vel_Solid[ID_Dimension])/(1.0 + dt*Cd);
-}
-
-
-AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-void Velocity_Correct (int i, int j, int k,
-                      amrex::Array4<amrex::Real> const& Vel_new,
-                      amrex::Array4<amrex::Real const> const& Vel_old,
-                      amrex::Array4<amrex::Real const> const& PCorrect,
-         AMREX_D_DECL(amrex::Real const& dx,
-                      amrex::Real const& dy,
-                      amrex::Real const& dz),
-                      amrex::Real const& dt,
-                      int ID_Dimension)
-{
-    amrex::Array<amrex::Real,AMREX_SPACEDIM> dX = {AMREX_D_DECL(dx, dy, dz)};
-    amrex::Real Grad_PCorrect;
-    Gradient_Center(i, j, k,
-                    Grad_PCorrect,
-                    PCorrect, dX[ID_Dimension], ID_Dimension);
-    Vel_new(i,j,k) = Vel_old(i,j,k) - dt*Grad_PCorrect;
 }
 #endif

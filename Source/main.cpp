@@ -37,7 +37,7 @@ void main_main ()
     Real CFL_abort;
     int Fixed_TimeStep;
 
-    Real Re, nu;
+    Real gamma, Re, nu;
 
     Real tol_rel;
     int max_iter, max_fmg_iter, verbose, bottom_verbose;
@@ -99,6 +99,9 @@ void main_main ()
 		CFL_abort = 100.0;
 		pp.query("CFL_abort", CFL_abort);
 
+        gamma = 1.4;
+        pp.query("gamma", gamma);
+
         pp.get("Re",Re);
         nu = 1.0/Re;
 
@@ -150,6 +153,9 @@ void main_main ()
     InitialCondition initial_condition;
     initial_condition.Initialize();
 
+    BoundaryCondition BoundaryCondition_rho;
+    BoundaryCondition_rho.Initialize("BC_rho", is_periodic);
+
     BoundaryCondition BoundaryCondition_u;
     BoundaryCondition_u.Initialize("BC_u", is_periodic);
 #if (AMREX_SPACEDIM > 1)
@@ -162,7 +168,11 @@ void main_main ()
 #endif
     BoundaryCondition BoundaryCondition_P;
     BoundaryCondition_P.Initialize("BC_P", is_periodic);
-
+    Array<BoundaryCondition,NSTATE> BoundaryCondition_V = {BoundaryCondition_rho,
+                                              AMREX_D_DECL(BoundaryCondition_u,
+                                                           BoundaryCondition_v,
+                                                           BoundaryCondition_w),
+                                                           BoundaryCondition_P};
     ImmersedBoundary immersed_boundary;
     immersed_boundary.Initialize();
 
@@ -180,22 +190,14 @@ void main_main ()
     }
 
     // Nghost = number of ghost cells for each array
-    int Nghost = 1;
+    int Nghost = 2;
 
     // make BoxArray and DistributionMapping
     BoxArray ba;
     DistributionMapping dm;
 
     // we allocate two phi multifabs; one will store the old state, the other the new.
-    MultiFab u_old, u_new;
-#if (AMREX_SPACEDIM > 1)
-    MultiFab v_old, v_new;
-#endif
-#if (AMREX_SPACEDIM > 2)
-    MultiFab w_old, w_new;
-#endif
-    MultiFab P_old, P_new;
-    Array<MultiFab,AMREX_SPACEDIM> Vel_old, Vel_new;
+    MultiFab U_old, U_new;
     Array<Real,AMREX_SPACEDIM> Force_Hydrodynamic = {AMREX_D_DECL(0.0, 0.0, 0.0)};
     // ========================================
 
@@ -212,57 +214,30 @@ void main_main ()
         // How Boxes are distrubuted among MPI processes
         dm.define(ba);
 
-        u_old.define(ba, dm, 1, Nghost);
-        u_new.define(ba, dm, 1, Nghost);
-#if (AMREX_SPACEDIM > 1)
-        v_old.define(ba, dm, 1, Nghost);
-        v_new.define(ba, dm, 1, Nghost);
-#endif
-#if (AMREX_SPACEDIM > 2)
-         w_old.define(ba, dm, 1, Nghost);
-         w_new.define(ba, dm, 1, Nghost);
-#endif
-        P_old.define(ba, dm, 1, Nghost);
-        P_new.define(ba, dm, 1, Nghost);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
-        {
-            BoxArray ba_face = ba;
-            ba_face.surroundingNodes(idim);
-            Vel_old[idim].define(ba_face, dm, 1, 0);
-            Vel_new[idim].define(ba_face, dm, 1, 0);
-        }
+        U_old.define(ba, dm, NSTATE, Nghost);
+        U_new.define(ba, dm, NSTATE, Nghost);
 
         // time = starting time in the simulation
         time = 0.0;
         start_step = 1;
-        Initial_Condition(u_new, BoundaryCondition_u,
-#if (AMREX_SPACEDIM > 1)
-                          v_new, BoundaryCondition_v,
-#endif
-#if (AMREX_SPACEDIM > 2)
-                          w_new, BoundaryCondition_w,
-#endif
-                          P_new, Vel_new,
+        Initial_Condition(U_new,
                           geom,
-                          initial_condition);
+                          initial_condition,
+                          gamma);
 
         // Write a plotfile of the initial data if plot_int > 0 (plot_int was defined in the inputs file)
         if (plot_int > 0)
         {
-            MultiFab Output(ba, dm, AMREX_SPACEDIM+1, 0);
-            AMREX_D_TERM(
-            MultiFab::Copy(Output, u_new, 0,              0, 1, 0);,
-            MultiFab::Copy(Output, v_new, 0,              1, 1, 0);,
-            MultiFab::Copy(Output, w_new, 0,              2, 1, 0));
-            MultiFab::Copy(Output, P_new, 0, AMREX_SPACEDIM, 1, 0);
+            MultiFab Output(ba, dm, NSTATE, 0);
+            MultiFab::Copy(Output, U_new, 0, 0, NSTATE, 0);
 
             int n = 0;
             const std::string& pltfile = amrex::Concatenate("./plot/plt",n,5);
-            WriteSingleLevelPlotfile(pltfile, Output, {AMREX_D_DECL("u", "v", "w"), "P"}, geom, time, 0);
+            WriteSingleLevelPlotfile(pltfile, Output, {"rho", AMREX_D_DECL("rho_u", "rho_v", "rho_w"), "rho_E"}, geom, time, 0);
 #if (USE_HDF5)
             std::filesystem::create_directories("./plot_HDF5");
 			const std::string& pltfile_HDF5 = amrex::Concatenate("./plot_HDF5/plt",n,5);
-			WriteSingleLevelPlotfileHDF5(pltfile_HDF5, Output, {AMREX_D_DECL("u", "v", "w"), "P"}, geom, time, 0, "None@0");
+			WriteSingleLevelPlotfileHDF5(pltfile_HDF5, Output, {"rho", AMREX_D_DECL("rho_u", "rho_v", "rho_w"), "rho_E"}, geom, time, 0, "None@0");
 #endif
         }
         if (plotForce_int > 0)
@@ -304,40 +279,21 @@ void main_main ()
         // read in the time and BoxArray, then create a DistributionMapping
         // Define phi_old and fill it with data from the checkpoint file
         ReadCheckpoint(restart, time,
-                       u_new,
-#if (AMREX_SPACEDIM > 1)
-                       v_new,
-#endif
-#if (AMREX_SPACEDIM > 2)
-                       w_new,
-#endif
-                       P_new, Vel_new,
-                       ba, dm);
+                       U_new,
+                       ba, dm,
+                       Nghost);
 
         // set start_step to restart+1
         start_step = restart + 1;
 
-        u_old.define(ba, dm, 1, Nghost);
-#if (AMREX_SPACEDIM > 1)
-        v_old.define(ba, dm, 1, Nghost);
-#endif
-#if (AMREX_SPACEDIM > 2)
-        w_old.define(ba, dm, 1, Nghost);
-#endif
-        P_old.define(ba, dm, 1, Nghost);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
-        {
-            BoxArray ba_face = ba;
-            ba_face.surroundingNodes(idim);
-            Vel_old[idim].define(ba_face, dm, 1, 0);
-        }
+        U_old.define(ba, dm, NSTATE, Nghost);
     }
 
     // -------------------------------------------------------------------------
     // Print a run summary
     // -------------------------------------------------------------------------
     amrex::Print() << "============================================================\n"
-                   << "        Equation Type: Incompressible Navier-Stokes FSI\n"
+                   << "        Equation Type: Compressible Navier-Stokes FSI\n"
                    << "         Spatial Dim.: " << AMREX_SPACEDIM << "\n"
                    << "      Num. Processes: " << ParallelDescriptor::NProcs() << "\n"
                    << "        No. of Steps: " << nsteps << "\n"
@@ -362,7 +318,12 @@ void main_main ()
     amrex::Print() << "          CFL Abort: " << CFL_abort << "\n";
     if (restart <= 0) {
         amrex::Print() << "Initial Conditions:\n"
-                       << "  - u(x,y,z): " << initial_condition.u_parser.expr();
+                       << "  - rho(x,y,z): " << initial_condition.rho_parser.expr();
+        if (initial_condition.Data.rho_noise > 0.0){
+            amrex::Print() << " + Gaussian noise (sigma=" << initial_condition.Data.rho_noise << ")";
+        }
+        amrex::Print() << "\n";
+        amrex::Print() << "  - u(x,y,z): " << initial_condition.u_parser.expr();
         if (initial_condition.Data.u_noise > 0.0){
             amrex::Print() << " + Gaussian noise (sigma=" << initial_condition.Data.u_noise << ")";
         }
@@ -387,7 +348,7 @@ void main_main ()
         }
         amrex::Print() << "\n";
 
-        if (AMREX_D_TERM(initial_condition.Data.u_noise > 0.0, || initial_condition.Data.v_noise > 0.0, || initial_condition.Data.w_noise > 0.0) || initial_condition.Data.P_noise > 0.0){
+        if (initial_condition.Data.rho_noise > 0.0 || AMREX_D_TERM(initial_condition.Data.u_noise > 0.0, || initial_condition.Data.v_noise > 0.0, || initial_condition.Data.w_noise > 0.0) || initial_condition.Data.P_noise > 0.0){
             amrex::Print() << "  - Noise seed: " << initial_condition.Data.noise_seed << "\n";
         }
     }
@@ -437,18 +398,23 @@ void main_main ()
     // Time advancement
     for (int n = start_step; n <= nsteps && time < Final_Time; ++n)
     {
+        Array<Real,AMREX_SPACEDIM> max_wave_speed;
+        Max_WaveSpeed(max_wave_speed,
+                      U_new, BoundaryCondition_V,
+                      geom, time,
+                      gamma);
         // Determine time step
         if (!Fixed_TimeStep){
             GpuArray<Real,AMREX_SPACEDIM> dX = geom.CellSizeArray();
-            Real dt_Adv = CFL/std::max({AMREX_D_DECL(Vel_new[0].norminf()/dX[0], Vel_new[1].norminf()/dX[1], Vel_new[2].norminf()/dX[2])});
+            Real dt_Adv = CFL/std::max({AMREX_D_DECL(max_wave_speed[0]/dX[0], max_wave_speed[1]/dX[1], max_wave_speed[2]/dX[2])});
             Real dt_Dif = CFL/nu/(AMREX_D_TERM(2.0/dX[0]/dX[0], + 2.0/dX[1]/dX[1], + 2.0/dX[2]/dX[2]));
-            dt = std::min(dt_Dif, dt_Adv);
+            dt = std::min(dt_Adv, dt_Dif);
         }
         if (time + dt > Final_Time){
             dt = Final_Time - time;
         }
         GpuArray<Real,AMREX_SPACEDIM> dX = geom.CellSizeArray();
-        Real CFL_Adv = dt*std::max({AMREX_D_DECL(Vel_new[0].norminf()/dX[0], Vel_new[1].norminf()/dX[1], Vel_new[2].norminf()/dX[2])});
+        Real CFL_Adv = dt*std::max({AMREX_D_DECL(max_wave_speed[0]/dX[0], max_wave_speed[1]/dX[1], max_wave_speed[2]/dX[2])});
         Real CFL_Dif = nu*dt*(AMREX_D_TERM(2.0/dX[0]/dX[0], + 2.0/dX[1]/dX[1], + 2.0/dX[2]/dX[2]));
         // ============================================================
         // Abort simulation if CFL becomes too large or invalid
@@ -472,40 +438,18 @@ void main_main ()
 			break;
 		}
 
-        AMREX_D_TERM(
-        MultiFab::Copy(u_old, u_new, 0, 0, 1, 0);,
-        MultiFab::Copy(v_old, v_new, 0, 0, 1, 0);,
-        MultiFab::Copy(w_old, w_new, 0, 0, 1, 0));
-        MultiFab::Copy(P_old, P_new, 0, 0, 1, 0);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim){
-            MultiFab::Copy(Vel_old[idim], Vel_new[idim], 0, 0, 1, 0);
-        }
+        MultiFab::Copy(U_old, U_new, 0, 0, NSTATE, 0);
 
         // new_phi = old_phi + dt * (something)
-        advance(u_old, u_new, BoundaryCondition_u,
-#if (AMREX_SPACEDIM > 1)
-                v_old, v_new, BoundaryCondition_v,
-#endif
-#if (AMREX_SPACEDIM > 2)
-                w_old, w_new, BoundaryCondition_w,
-#endif
-                P_old, P_new, BoundaryCondition_P,
-                Vel_old, Vel_new, Force_Hydrodynamic,
+        advance(U_old, U_new, BoundaryCondition_V,
+                Force_Hydrodynamic,
                 geom, dt, time,
-                nu,
+                gamma, nu,
                 immersed_boundary,
                 tol_rel, max_iter, max_fmg_iter, verbose, bottom_verbose);
         time = time + dt;
 
-        // The per-step progress output.
-        // amrex::Print() << "Advanced step " << n
-        //               << " at Time = " << time
-        //               << " with dt = " << dt
-        //               << " CFL_Adv = " << CFL_Adv
-        //               << " CFL_Dif = " << CFL_Dif << "\n";
-
         // CFL summary per IO_CFLSteps.
-     
         if (IO_CFLSteps > 0 && n % IO_CFLSteps == 0)
         {
             amrex::Print() << "Advanced step " << n
@@ -518,19 +462,15 @@ void main_main ()
         // Write a plotfile of the current data (plot_int was defined in the inputs file)
         if (plot_int > 0 && n%plot_int == 0)
         {
-            MultiFab Output(ba, dm, AMREX_SPACEDIM+1, 0);
-            AMREX_D_TERM(
-            MultiFab::Copy(Output, u_new, 0,              0, 1, 0);,
-            MultiFab::Copy(Output, v_new, 0,              1, 1, 0);,
-            MultiFab::Copy(Output, w_new, 0,              2, 1, 0));
-            MultiFab::Copy(Output, P_new, 0, AMREX_SPACEDIM, 1, 0);
+            MultiFab Output(ba, dm, NSTATE, 0);
+            MultiFab::Copy(Output, U_new, 0, 0, NSTATE, 0);
 
             const std::string& pltfile = amrex::Concatenate("./plot/plt",n,5);
-            WriteSingleLevelPlotfile(pltfile, Output, {AMREX_D_DECL("u", "v", "w"), "P"}, geom, time, n);
+            WriteSingleLevelPlotfile(pltfile, Output, {"rho", AMREX_D_DECL("rho_u", "rho_v", "rho_w"), "rho_E"}, geom, time, n);
 #if (USE_HDF5)
 			std::filesystem::create_directories("./plot_HDF5");
             const std::string& pltfile_HDF5 = amrex::Concatenate("./plot_HDF5/plt",n,5);
-			WriteSingleLevelPlotfileHDF5(pltfile_HDF5, Output, {AMREX_D_DECL("u", "v", "w"), "P"}, geom, time, n, "None@0");
+			WriteSingleLevelPlotfileHDF5(pltfile_HDF5, Output, {"rho", AMREX_D_DECL("rho_u", "rho_v", "rho_w"), "rho_E"}, geom, time, n, "None@0");
 #endif
         }
         if (plotForce_int > 0 && n%plotForce_int == 0)
@@ -583,14 +523,7 @@ void main_main ()
             // write out time and BoxArray to a Header file
             // write out multifab data
             WriteCheckpoint(n, time,
-                            u_new,
-#if (AMREX_SPACEDIM > 1)
-                            v_new,
-#endif
-#if (AMREX_SPACEDIM > 2)
-                            w_new,
-#endif
-                            P_new, Vel_new);
+                            U_new);
         }
 
         // Periodically report elapsed wall-clock time for the last IO_InfoSteps steps.

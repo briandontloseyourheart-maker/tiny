@@ -9,6 +9,9 @@
 
 struct InitialConditionData
 {
+    amrex::ParserExecutor<AMREX_SPACEDIM> rho;
+    amrex::Real rho_noise = 0.0;
+
     amrex::ParserExecutor<AMREX_SPACEDIM> u;
     amrex::Real u_noise = 0.0;
 #if (AMREX_SPACEDIM > 1)
@@ -27,13 +30,25 @@ struct InitialConditionData
 
 struct InitialCondition
 {
-    amrex::Parser AMREX_D_DECL(u_parser, v_parser, w_parser), P_parser;
+    amrex::Parser rho_parser, AMREX_D_DECL(u_parser, v_parser, w_parser), P_parser;
 
     InitialConditionData Data;
 
     void Initialize ()
     {
         amrex::ParmParse pp("IC");
+
+        std::string rho_expr = "0.0001";
+        pp.query("rho", rho_expr);
+        rho_parser.define(rho_expr);
+        rho_parser.setConstant("pi", amrex::Math::pi<amrex::Real>());
+        rho_parser.registerVariables({AMREX_D_DECL("x", "y", "z")});
+        Data.rho = rho_parser.compile<AMREX_SPACEDIM>();
+
+        pp.query("rho_noise", Data.rho_noise);
+        if (Data.rho_noise < 0.0){
+            amrex::Abort("IC.rho_noise must be >= 0.0");
+        }
 
         std::string u_expr = "0.0001";
         pp.query("u", u_expr);

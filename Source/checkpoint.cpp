@@ -13,22 +13,12 @@ namespace {
 // write out multifab data
 void WriteCheckpoint(const int& step,
                      const Real& time,
-                     const MultiFab& u,
-#if (AMREX_SPACEDIM > 1)
-                     const MultiFab& v,
-#endif
-#if (AMREX_SPACEDIM > 2)
-                     const MultiFab& w,
-#endif
-                     const MultiFab& P,
-                     const Array<MultiFab,AMREX_SPACEDIM>& Vel)
+                     const MultiFab& U)
 {
-
-
     // checkpoint file name, e.g., chk00010
     const std::string& checkpointname = Concatenate("./checkpoint/chk",step,5);
 
-    BoxArray ba = P.boxArray();
+    BoxArray ba = U.boxArray();
 
     // single level problem
     int nlevels = 1;
@@ -71,36 +61,18 @@ void WriteCheckpoint(const int& step,
     }
 
     // write the MultiFab data to, e.g., chk00010/Level_0/
-    VisMF::Write(u, MultiFabFileFullPrefix(0, checkpointname, "Level_", "u"));
-    VisMF::Write(Vel[0], MultiFabFileFullPrefix(0, checkpointname, "Level_", "Velx"));
-#if (AMREX_SPACEDIM > 1)
-    VisMF::Write(v, MultiFabFileFullPrefix(0, checkpointname, "Level_", "v"));
-    VisMF::Write(Vel[1], MultiFabFileFullPrefix(0, checkpointname, "Level_", "Vely"));
-#endif
-#if (AMREX_SPACEDIM > 2)
-    VisMF::Write(w, MultiFabFileFullPrefix(0, checkpointname, "Level_", "w"));
-    VisMF::Write(Vel[2], MultiFabFileFullPrefix(0, checkpointname, "Level_", "Velz"));
-#endif
-    VisMF::Write(P, MultiFabFileFullPrefix(0, checkpointname, "Level_", "P"));
+    VisMF::Write(U, MultiFabFileFullPrefix(0, checkpointname, "Level_", "U"));
 }
 
 // read in the time and BoxArray, then create a DistributionMapping
 // Define phi and fill it with data from the checkpoint file
 void ReadCheckpoint(const int& restart,
                     Real& time,
-                    MultiFab& u,
-#if (AMREX_SPACEDIM > 1)
-                    MultiFab& v,
-#endif
-#if (AMREX_SPACEDIM > 2)
-                    MultiFab& w,
-#endif
-                    MultiFab& P,
-                    Array<MultiFab,AMREX_SPACEDIM>& Vel,
+                    MultiFab& U,
                     BoxArray& ba,
-                    DistributionMapping& dm)
+                    DistributionMapping& dm,
+                    int Nghost)
 {
-
     // checkpoint file name, e.g., chk00010
     const std::string& checkpointname = Concatenate("./checkpoint/chk",restart,5);
 
@@ -132,36 +104,10 @@ void ReadCheckpoint(const int& restart,
         // create a distribution mapping
         dm.define(ba, ParallelDescriptor::NProcs());
 
-        // Nghost = number of ghost cells for each array
-        int Nghost = 1;
-
-        u.define(ba, dm, 1, Nghost);
-#if (AMREX_SPACEDIM > 1)
-        v.define(ba, dm, 1, Nghost);
-#endif
-#if (AMREX_SPACEDIM > 2)
-        w.define(ba, dm, 1, Nghost);
-#endif
-        P.define(ba, dm, 1, Nghost);
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
-        {
-            BoxArray ba_face = ba;
-            ba_face.surroundingNodes(idim);
-            Vel[idim].define(ba_face, dm, 1, 0);
-        }
+        U.define(ba, dm, NSTATE, Nghost);
     }
 
     // read in the MultiFab data
-    VisMF::Read(u, MultiFabFileFullPrefix(0, checkpointname, "Level_", "u"));
-    VisMF::Read(Vel[0], MultiFabFileFullPrefix(0, checkpointname, "Level_", "Velx"));
-#if (AMREX_SPACEDIM > 1)
-    VisMF::Read(v, MultiFabFileFullPrefix(0, checkpointname, "Level_", "v"));
-    VisMF::Read(Vel[1], MultiFabFileFullPrefix(0, checkpointname, "Level_", "Vely"));
-#endif
-#if (AMREX_SPACEDIM > 2)
-    VisMF::Read(w, MultiFabFileFullPrefix(0, checkpointname, "Level_", "w"));
-    VisMF::Read(Vel[2], MultiFabFileFullPrefix(0, checkpointname, "Level_", "Velz"));
-#endif
-    VisMF::Read(P, MultiFabFileFullPrefix(0, checkpointname, "Level_", "P"));
+    VisMF::Read(U, MultiFabFileFullPrefix(0, checkpointname, "Level_", "U"));
 
 }
