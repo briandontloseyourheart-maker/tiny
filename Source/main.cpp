@@ -395,6 +395,107 @@ void main_main ()
     auto screen_time_start = ParallelDescriptor::second();
     const int IOProc = ParallelDescriptor::IOProcessorNumber();
 
+    // -------------------------------------------------------------------------
+    // Print a run summary
+    // -------------------------------------------------------------------------
+    amrex::Print() << "============================================================\n"
+                   << "        Equation Type: Incompressible Navier-Stokes FSI\n"
+                   << "         Spatial Dim.: " << AMREX_SPACEDIM << "\n"
+                   << "      Num. Processes: " << ParallelDescriptor::NProcs() << "\n"
+                   << "        No. of Steps: " << nsteps << "\n"
+                   << " Checkpoints (steps): ";
+    if (chk_int > 0) {
+        amrex::Print() << chk_int << "\n";
+    } else {
+        amrex::Print() << "Disabled\n";
+    }
+    amrex::Print() << "      IO InfoSteps: ";
+    if (IO_InfoSteps > 0) {
+        amrex::Print() << IO_InfoSteps << "\n";
+    } else {
+        amrex::Print() << "Disabled\n";
+    }
+    amrex::Print() << "       IO CFLSteps: ";
+    if (IO_CFLSteps > 0) {
+        amrex::Print() << IO_CFLSteps << "\n";
+    } else {
+        amrex::Print() << "Disabled\n";
+    }
+    amrex::Print() << "          CFL Abort: " << CFL_abort << "\n";
+    if (restart <= 0) {
+        amrex::Print() << "Initial Conditions:\n"
+                       << "  - u(x,y,z): " << initial_condition.u_parser.expr();
+        if (initial_condition.Data.u_noise > 0.0){
+            amrex::Print() << " + Gaussian noise (sigma=" << initial_condition.Data.u_noise << ")";
+        }
+        amrex::Print() << "\n";
+#if (AMREX_SPACEDIM > 1)
+        amrex::Print() << "  - v(x,y,z): " << initial_condition.v_parser.expr();
+        if (initial_condition.Data.v_noise > 0.0){
+            amrex::Print() << " + Gaussian noise (sigma=" << initial_condition.Data.v_noise << ")";
+        }
+        amrex::Print() << "\n";
+#endif
+#if (AMREX_SPACEDIM > 2)
+        amrex::Print() << "  - w(x,y,z): " << initial_condition.w_parser.expr();
+        if (initial_condition.Data.w_noise > 0.0){
+            amrex::Print() << " + Gaussian noise (sigma=" << initial_condition.Data.w_noise << ")";
+        }
+        amrex::Print() << "\n";
+#endif
+        amrex::Print() << "  - P(x,y,z): " << initial_condition.P_parser.expr();
+        if (initial_condition.Data.P_noise > 0.0){
+            amrex::Print() << " + Gaussian noise (sigma=" << initial_condition.Data.P_noise << ")";
+        }
+        amrex::Print() << "\n";
+
+        if (AMREX_D_TERM(initial_condition.Data.u_noise > 0.0, || initial_condition.Data.v_noise > 0.0, || initial_condition.Data.w_noise > 0.0) || initial_condition.Data.P_noise > 0.0){
+            amrex::Print() << "  - Noise seed: " << initial_condition.Data.noise_seed << "\n";
+        }
+    }
+    else{
+        amrex::Print() << "Initial Conditions:\n"
+                       << "  - Restart from checkpoint: "
+                       << amrex::Concatenate("chk", restart, 5) << "\n"
+                       << "  - Restart time: " << time << "\n";
+    }
+    amrex::Print() << "IBM Geometry / Prescribed Motion:\n"
+                   << "  - x_Center(t): " << immersed_boundary.x_parser.expr() << "\n"
+#if (AMREX_SPACEDIM > 1)
+                   << "  - y_Center(t): " << immersed_boundary.y_parser.expr() << "\n"
+#endif
+#if (AMREX_SPACEDIM > 2)
+                   << "  - z_Center(t): " << immersed_boundary.z_parser.expr() << "\n"
+#endif
+                   << "  - Centre at t=0: ("
+                   << immersed_boundary.Data.x(0.0)
+#if (AMREX_SPACEDIM > 1)
+                   << ", " << immersed_boundary.Data.y(0.0)
+#endif
+#if (AMREX_SPACEDIM > 2)
+                   << ", " << immersed_boundary.Data.z(0.0)
+#endif
+                   << ")\n"
+                   << "  - Radius: " << immersed_boundary.Data.radius << "\n"
+                   << "  - Epsilon: " << immersed_boundary.Data.epsilon << "\n"
+#if (AMREX_SPACEDIM == 1)
+                   << "  - Solid velocity: d(x_Center)/dt "
+#endif
+#if (AMREX_SPACEDIM == 2)
+                   << "  - Solid velocity: d(x_Center, y_Center)/dt "
+#endif
+#if (AMREX_SPACEDIM == 3)
+                   << "  - Solid velocity: d(x_Center, y_Center, z_Center)/dt "
+#endif
+                   << "(centred difference)\n";
+
+    amrex::Print() << "============================================================\n";
+
+    // Timer used for Nektar++-style interval timing.  ParallelDescriptor::second()
+    // measures wall-clock time; the reported value below is the maximum over MPI ranks.
+    auto screen_time_start = ParallelDescriptor::second();
+    const int IOProc = ParallelDescriptor::IOProcessorNumber();
+
     // Time advancement
     for (int n = start_step; n <= nsteps && time < Final_Time; ++n)
     {
@@ -524,6 +625,20 @@ void main_main ()
             // write out multifab data
             WriteCheckpoint(n, time,
                             U_new);
+        }
+
+        // Periodically report elapsed wall-clock time for the last IO_InfoSteps steps.
+        if (IO_InfoSteps > 0 && n % IO_InfoSteps == 0)
+        {
+            Real interval_cpu_time = ParallelDescriptor::second() - screen_time_start;
+            ParallelDescriptor::ReduceRealMax(interval_cpu_time, IOProc);
+
+            amrex::Print() << "Steps: " << n
+                           << "    Time: " << time
+                           << "    CPU Time: " << interval_cpu_time << " s\n";
+
+            // Start timing the next IO_InfoSteps-step block.
+            screen_time_start = ParallelDescriptor::second();
         }
 
         // Periodically report elapsed wall-clock time for the last IO_InfoSteps steps.
